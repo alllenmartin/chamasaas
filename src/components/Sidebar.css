@@ -1,0 +1,154 @@
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 260px;
+  background: #1e272e;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.2);
+}
+
+.logo-container {
+  padding: 2px 10px 0px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+
+.logo {
+  font-size: 1.8rem;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: #fff;
+  text-align: center;
+  white-space: nowrap;      /* prevents wrapping/overlap */
+  overflow: hidden;
+  text-overflow: ellipsis;  /* clean truncation if too long */
+}
+
+.sidebar nav ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  padding-left: 0;
+  margin-top: 10px;
+}
+
+.sidebar nav ul li {
+  display: flex;
+  align-items: center;
+  gap: 12px; /* space between icon and text */
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.25s, transform 0.2s;
+}
+
+.sidebar nav ul li:hover {
+  background: #485460;
+  transform: translateX(5px);
+}
+
+.sidebar nav ul li.active {
+  background: #40739e;
+}
+
+.sidebar nav ul li .icon {
+  font-size: 1.2rem;
+}
+
+.sidebar nav ul li .text {
+  font-size: 1rem;
+  font-weight: 500;
+}
+.sidebar nav ul li a {
+  text-decoration: none; /* removes underline */
+  color: inherit;         /* keeps the same text color as the parent */
+  display: flex;          /* keep icon + text horizontal */
+  align-items: center;
+  gap: 8px;               /* space between icon and text */
+}
+
+.sidebar nav ul li a:hover {
+  color: #1d4ed8; /* optional: make it blue on hover */
+}
+
+/* New */
+.sidebar-footer {
+  margin-top: auto;
+  padding: 16px;
+  border-top: 1px solid #eee;
+}
+
+.logout-btn {
+  width: 100%;
+  background: none;
+  border: none;
+  color: #e74c3c;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 0;
+  text-align: left;
+}
+
+.logout-btn:hover {
+  color: #c0392b;
+}
+
+
+/* User section */
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  margin: 8px 12px;
+  background: #f8f9fb;
+  border-radius: 10px;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  background: #3498db;
+  color: #fff;
+  font-weight: 700;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111;
+}
+
+.user-role {
+  font-size: 12px;
+  color: #6b7280;
+  text-transform: capitalize;
+}
+
+/* Footer */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 16px;
+  border-top: 1px solid #eee;
+}
+

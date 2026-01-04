@@ -1,0 +1,105 @@
+.auth-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f4f6f8;
+}
+
+.auth-card {
+  background: #fff;
+  padding: 28px;
+  width: 100%;
+  max-width: 360px;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+}
+
+.auth-card h2 {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.auth-card input,
+.auth-card select {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.auth-card button {
+  width: 100%;
+  padding: 10px;
+  background: #3498db;
+  border: none;
+  color: white;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.auth-card button:hover {
+  background: #2980b9;
+}
+
+.auth-error {
+  color: #e74c3c;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.auth-success {
+  color: #2ecc71;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.auth-footer {
+  text-align: center;
+  font-size: 14px;
+  margin-top: 12px;
+}
+
+.auth-footer span {
+  color: #3498db;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* Spinner for overlay */
+.loader {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+/* Full overlay */
+.loader-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+}
+
+/* Spinner animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Make sure form is relative for overlay positioning */
+.auth-card {
+  position: relative;
+}
+

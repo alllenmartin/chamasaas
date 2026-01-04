@@ -1,0 +1,236 @@
+/* =========================
+   CREDIT PAGE – MEMBER CARD
+========================= */
+
+.credit-summary {
+  margin-top: 24px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 22px 26px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  max-width: 540px;
+}
+
+.credit-summary h3 {
+  margin-bottom: 18px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+/* Row layout */
+.credit-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.credit-row span:first-child {
+  color: #6b7280;
+}
+
+.credit-row span:last-child {
+  font-weight: 600;
+  color: #111;
+}
+
+/* Highlight amount */
+.credit-highlight {
+  margin: 18px 0;
+  padding: 14px;
+  background: linear-gradient(135deg, #e0ecff, #f5f9ff);
+  border-radius: 10px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+/* Warning */
+.credit-warning {
+  margin-top: 14px;
+  padding: 12px;
+  background: #fff1f1;
+  border-left: 4px solid #e74c3c;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #c0392b;
+}
+
+/* Action button */
+.credit-action {
+  margin-top: 20px;
+}
+
+/* =========================
+   CREDIT REQUEST MODAL
+========================= */
+
+.modal {
+  width: 100%;
+  max-width: 420px;
+}
+
+.modal h3 {
+  margin-bottom: 14px;
+  font-size: 18px;
+}
+
+.modal input {
+  width: 100%;
+  padding: 10px 12px;
+  margin-top: 10px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+}
+
+.modal p {
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.modal strong {
+  color: #111;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+/* Flex container for button + dropdown */
+.member-selector-container {
+  display: flex;
+  gap: 12px; /* space between button and select */
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.member-selector-container select {
+  padding: 8px 12px;
+  font-size: 14px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  cursor: pointer;
+}
+
+.member-selector-container .view-btn {
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* =========================
+   CREDIT TABLE
+========================= */
+
+.credit-table.clean-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+.credit-table.clean-table th,
+.credit-table.clean-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border: none; /* remove borders */
+}
+
+.credit-table.clean-table th {
+  background-color: #f5f5f5;
+  font-weight: 600;
+  color: #333;
+}
+
+.credit-table.clean-table tbody tr {
+  background-color: #fff;
+  transition: background-color 0.2s;
+}
+
+.credit-table.clean-table tbody tr:nth-child(even) {
+  background-color: #fafafa; /* subtle striped effect */
+}
+
+.credit-table.clean-table tbody tr:hover {
+  background-color: #f0f8ff; /* hover highlight */
+}
+
+/* Status labels */
+.status-active {
+  color: #3498db;
+  font-weight: bold;
+}
+
+.status-defaulted {
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+.status-completed {
+  color: #2ecc71;
+  font-weight: bold;
+}
+
+/* =========================
+   TABS
+========================= */
+
+.loan-tabs {
+  margin-bottom: 12px;
+}
+
+.tab-btn {
+  padding: 6px 14px;
+  margin-right: 8px;
+  border: 1px solid #3498db;
+  background-color: #fff;
+  color: #3498db;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  background-color: #3498db;
+  color: #fff;
+}
+
+.tab-btn.active {
+  background-color: #3498db;
+  color: #fff;
+}
+
+/* =========================
+   SEARCH INPUT
+========================= */
+
+.loan-search {
+  width: 100%;
+  max-width: 400px;
+  padding: 6px 12px;
+  margin-bottom: 16px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 600px) {
+  .credit-summary {
+    padding: 18px;
+  }
+}
