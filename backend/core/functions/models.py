@@ -2,6 +2,14 @@ from flask_sqlalchemy import SQLAlchemy
 import enum
 from datetime import date
 from core import db
+from datetime import datetime
+
+
+# Loan Status
+class CreditStatusEnum(enum.Enum):
+    Active = "Active"
+    Completed = "Completed"
+    Defaulted = "Defaulted"
 
 # Enum for frequency
 class FrequencyEnum(enum.Enum):
@@ -64,6 +72,50 @@ class Member(db.Model):
             "amountPaid": self.amountPaid,
             "status": self.status,
             "registrationPaid": self.registrationPaid,
+        }
+        
+class Contribution(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    memberId = db.Column(db.String(8), db.ForeignKey('member.id'), nullable=False)
+    memberName = db.Column(db.String(100))
+    month = db.Column(db.String(7))  # e.g., 2024-01
+    amount = db.Column(db.Integer, nullable=False)
+    date = db.Column(db.String(10), default=datetime.today().strftime('%d/%m/%Y'))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "memberId": self.memberId,
+            "memberName": self.memberName,
+            "month": self.month,
+            "amount": self.amount,
+            "date": self.date,
+        }
+        
+class Credit(db.Model):
+    id = db.Column(db.Integer, primary_key=True)  # internal PK
+    loan_id = db.Column(db.String(10), unique=True, nullable=False)
+    member_id = db.Column(db.String(8), nullable=False)
+    amount_requested = db.Column(db.Integer, nullable=False)
+    interest_rate = db.Column(db.Float, nullable=False)
+    installments = db.Column(db.Integer, nullable=False)
+    status = db.Column(
+        db.Enum(CreditStatusEnum),
+        nullable=False,
+        default=CreditStatusEnum.Active
+    )
+
+    created_at = db.Column(db.Date, default=date.today)
+
+    def to_dict(self):
+        return {
+            "loanId": self.loan_id,
+            "memberId": self.member_id,
+            "amountRequested": self.amount_requested,
+            "interestRate": self.interest_rate,
+            "installments": self.installments,
+            "status": self.status.value,
+            "createdAt": self.created_at.isoformat(),
         }
         
 

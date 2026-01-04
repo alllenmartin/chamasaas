@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import "./Members.css";
 
@@ -14,111 +14,113 @@ import { Bar } from "react-chartjs-2";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
-const membersData = [
-  { id: "12345678", name: "Jane Doe", registrationPaidAmount: 1000 },
-  { id: "87654321", name: "John Smith", registrationPaidAmount: 200 },
-  { id: "99887766", name: "Alice Mwangi", registrationPaidAmount: 1000 },
-];
-
 const settings = JSON.parse(localStorage.getItem("chamaSettings")) || {};
 const registrationFee = Number(settings.registrationFee || 0);
 
 const MemberContributions = () => {
-  const [members, setMembers] = useState(membersData);
+  const [members, setMembers] = useState([]);
+  const [contributions, setContributions] = useState([]);
   const [selectedMemberId, setSelectedMemberId] = useState("");
   const [amount, setAmount] = useState("");
   const [month, setMonth] = useState("");
   const [viewAll, setViewAll] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const [contributions, setContributions] = useState([
-    {
-      memberId: "12345678",
-      memberName: "Jane Doe",
-      month: "2024-01",
-      amount: 5000,
-      date: "01/01/2024",
-    },
-    {
-      memberId: "87654321",
-      memberName: "John Smith",
-      month: "2024-01",
-      amount: 3000,
-      date: "02/01/2024",
-    },
-    {
-      memberId: "99887766",
-      memberName: "Alice Mwangi",
-      month: "2024-02",
-      amount: 5000,
-      date: "01/02/2024",
-    },
-  ]);
+  /** Fetch members and contributions from backend */
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const membersRes = await fetch("http://127.0.0.1:5000/api/members");
+        const membersData = await membersRes.json();
+        setMembers(membersData);
+
+        const contribRes = await fetch("http://127.0.0.1:5000/api/contributions");
+        const contribData = await contribRes.json();
+        setContributions(contribData);
+      } catch (err) {
+        console.error(err);
+        alert("Failed to fetch data from server");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const selectedMember = members.find((m) => m.id === selectedMemberId);
-
-  // Count unregistered members
-//   const unregisteredCount = members.filter(
-//     (m) => m.registrationPaidAmount < registrationFee
-//   ).length;
 
   /* ======================
      ADD CONTRIBUTION
   ====================== */
-  const handleAddContribution = () => {
+  const handleAddContribution = async () => {
     if (!selectedMemberId || !amount || !month) {
       alert("Fill all fields");
       return;
     }
 
     let remainingAmount = Number(amount);
-    const regRemaining = registrationFee - selectedMember.registrationPaidAmount;
+    const regRemaining = registrationFee - (selectedMember.registrationPaidAmount || 0);
 
     // Auto-deduct registration fee first
+    let registrationPaidAmount = selectedMember.registrationPaidAmount || 0;
     if (regRemaining > 0) {
       if (remainingAmount >= regRemaining) {
-        // Fully pay registration fee
         remainingAmount -= regRemaining;
-        setMembers((prev) =>
-          prev.map((m) =>
-            m.id === selectedMemberId
-              ? { ...m, registrationPaidAmount: registrationFee }
-              : m
-          )
-        );
+        registrationPaidAmount = registrationFee;
         alert(
-          `Registration fee of KES ${registrationFee.toLocaleString()} has been paid. Remaining contribution applied.`
+          `Registration fee of KES ${registrationFee.toLocaleString()} has been fully paid.`
         );
       } else {
-        // Partial registration payment
-        setMembers((prev) =>
-          prev.map((m) =>
-            m.id === selectedMemberId
-              ? { ...m, registrationPaidAmount: m.registrationPaidAmount + remainingAmount }
-              : m
-          )
-        );
-        alert(
-          `Partial registration payment of KES ${remainingAmount.toLocaleString()} recorded.`
-        );
-        return; // nothing left for contribution
+        registrationPaidAmount += remainingAmount;
+        remainingAmount = 0;
+        alert(`Partial registration payment of KES ${remainingAmount.toLocaleString()} recorded.`);
       }
+    }
+
+    // Update member registrationPaidAmount in backend
+    try {
+      await fetch(`http://127.0.0.1:5000/api/members/${selectedMember.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...selectedMember, registrationPaidAmount }),
+      });
+
+      setMembers((prev) =>
+        prev.map((m) =>
+          m.id === selectedMemberId ? { ...m, registrationPaidAmount } : m
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update member registration");
+      return;
     }
 
     if (remainingAmount <= 0) return;
 
-    setContributions([
-      ...contributions,
-      {
-        memberId: selectedMemberId,
-        memberName: selectedMember.name,
-        month,
-        amount: remainingAmount,
-        date: new Date().toLocaleDateString(),
-      },
-    ]);
+    // Add contribution in backend
+    const newContribution = {
+      memberId: selectedMemberId,
+      memberName: selectedMember.name,
+      month,
+      amount: remainingAmount,
+      date: new Date().toLocaleDateString(),
+    };
 
-    setAmount("");
-    setMonth("");
+    try {
+      const res = await fetch("http://127.0.0.1:5000/api/contributions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newContribution),
+      });
+      const savedContribution = await res.json();
+      setContributions([...contributions, savedContribution]);
+      setAmount("");
+      setMonth("");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save contribution");
+    }
   };
 
   /* ======================
@@ -147,55 +149,36 @@ const MemberContributions = () => {
     ],
   };
 
-  /* ======================
-     TOTALS
-  ====================== */
-  const totalCollected = visibleContributions.reduce(
-    (sum, c) => sum + c.amount,
-    0
-  );
+  const totalCollected = visibleContributions.reduce((sum, c) => sum + c.amount, 0);
+
+  if (loading) return <p>Loading data...</p>;
 
   return (
     <div className="dashboard">
       <Sidebar active="Contributions" />
-
       <main className="main-content">
         <h1>Contributions</h1>
 
-        {/* Dashboard Card: Unregistered Members */}
-        {/* <div style={{ marginBottom: "16px" }}>
-          <strong>Unregistered Members:</strong> {unregisteredCount} /{" "}
-          {members.length}
-        </div> */}
-
-        {/* View Toggle */}
         <div style={{ marginBottom: "12px" }}>
           <button className="view-btn" onClick={() => setViewAll(!viewAll)}>
             {viewAll ? "View Per Member" : "View All Contributions"}
           </button>
         </div>
 
-        {/* Member Selector */}
         {!viewAll && (
           <div style={{ marginBottom: "12px" }}>
-            <select
-              value={selectedMemberId}
-              onChange={(e) => setSelectedMemberId(e.target.value)}
-            >
+            <select value={selectedMemberId} onChange={(e) => setSelectedMemberId(e.target.value)}>
               <option value="">Select Member</option>
               {members.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}{" "}
-                  {m.registrationPaidAmount < registrationFee
-                    ? "(Registration Pending)"
-                    : ""}
+                  {m.registrationPaidAmount < registrationFee ? "(Registration Pending)" : ""}
                 </option>
               ))}
             </select>
           </div>
         )}
 
-        {/* Add Contribution */}
         {!viewAll && selectedMember && (
           <div style={{ marginBottom: "16px" }}>
             {selectedMember.registrationPaidAmount < registrationFee ? (
@@ -204,12 +187,7 @@ const MemberContributions = () => {
               </p>
             ) : (
               <>
-                <input
-                  type="month"
-                  value={month}
-                  onChange={(e) => setMonth(e.target.value)}
-                />
-
+                <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
                 <input
                   type="number"
                   placeholder="Amount"
@@ -217,12 +195,7 @@ const MemberContributions = () => {
                   onChange={(e) => setAmount(e.target.value)}
                   style={{ marginLeft: "6px" }}
                 />
-
-                <button
-                  className="view-btn"
-                  onClick={handleAddContribution}
-                  style={{ marginLeft: "6px" }}
-                >
+                <button className="view-btn" onClick={handleAddContribution} style={{ marginLeft: "6px" }}>
                   Add
                 </button>
               </>
@@ -230,13 +203,10 @@ const MemberContributions = () => {
           </div>
         )}
 
-        {/* Totals */}
         <p style={{ marginBottom: "16px" }}>
-          <strong>Total Collected:</strong> KES{" "}
-          {totalCollected.toLocaleString()}
+          <strong>Total Collected:</strong> KES {totalCollected.toLocaleString()}
         </p>
 
-        {/* Contributions Table */}
         <div className="member-table">
           <div className="table-header">
             <span>Member</span>
@@ -257,9 +227,7 @@ const MemberContributions = () => {
           {visibleContributions.length === 0 && <p>No contributions found.</p>}
         </div>
 
-        {/* Chart */}
         <h2 style={{ marginTop: "40px" }}>Monthly Inflow</h2>
-
         <Bar data={chartData} />
       </main>
     </div>
