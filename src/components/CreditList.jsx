@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import "./Members.css";
 import "./MemberCredit.css";
@@ -8,6 +9,7 @@ const CreditList = () => {
   const [activeTab, setActiveTab] = useState("Active");
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   /* ======================
      FETCH LOANS
@@ -48,6 +50,8 @@ const CreditList = () => {
   ====================== */
   const getStatusLabel = (status) => {
     switch (status) {
+      case "Pending":
+        return <span className="status-active">Pending</span>;
       case "Active":
         return <span className="status-active">Active</span>;
       case "Completed":
@@ -60,6 +64,16 @@ const CreditList = () => {
     }
   };
 
+  const handleEdit = (loan) => {
+    console.log("Editing loan:", loan);
+
+    // Option 1: Navigate to edit page
+    // navigate(`/credit/edit/${loan.loanId}`);
+
+    // Option 2: Open modal (recommended UX)
+    alert(`Edit loan ${loan.loanId}`);
+  };
+
   return (
     <div className="dashboard">
       <Sidebar active="Credit" />
@@ -69,15 +83,17 @@ const CreditList = () => {
 
         {/* Tabs */}
         <div className="loan-tabs">
-          {["Active", "Completed", "Rejected","Defaulted"].map((tab) => (
-            <button
-              key={tab}
-              className={`tab-btn ${activeTab === tab ? "active" : ""}`}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab}
-            </button>
-          ))}
+          {["Pending", "Active", "Completed", "Rejected", "Defaulted"].map(
+            (tab) => (
+              <button
+                key={tab}
+                className={`tab-btn ${activeTab === tab ? "active" : ""}`}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab}
+              </button>
+            )
+          )}
         </div>
 
         {/* Search */}
@@ -98,37 +114,50 @@ const CreditList = () => {
               <tr>
                 <th>Loan ID</th>
                 <th>Member ID</th>
-                 <th>Member Name</th>
+                <th>Member Name</th>
                 <th>Amount (KES)</th>
                 <th>Installments</th>
                 <th>Remaining</th>
                 <th>Status</th>
                 <th>Created</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredLoans.length > 0 ? (
                 filteredLoans.map((loan) => {
-                  const completed =
-                    loan.status === "Completed" ? loan.installments : 0;
-                  const remaining = loan.installments - completed;
-
+                
                   return (
                     <tr key={loan.loanId}>
                       <td>{loan.loanId}</td>
                       <td>{loan.memberId}</td>
-                       <td>{loan.memberName}</td>
+                      <td>{loan.memberName}</td>
                       <td>{loan.amountRequested.toLocaleString()}</td>
                       <td>{loan.installments}</td>
-                      <td>{remaining}</td>
+                      <td> {(loan.remainingBalance ?? 0).toLocaleString()}</td>
                       <td>{getStatusLabel(loan.status)}</td>
                       <td>{loan.createdAt}</td>
+                      <td>
+                        {loan.status === "Completed" ? (
+                          <span className="locked">Locked</span>
+                        ) : (
+                          <button
+                            className="edit-btn"
+                            onClick={() => navigate(`/credit/${loan.loanId}`)}
+                          >
+                            View / Edit
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: "center", color: "#888" }}>
+                  <td
+                    colSpan="7"
+                    style={{ textAlign: "center", color: "#888" }}
+                  >
                     No loans found
                   </td>
                 </tr>

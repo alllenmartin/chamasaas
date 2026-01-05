@@ -2,7 +2,7 @@
 from flask import request
 from flask_cors import cross_origin
 from app import app
-from .controller import get_settings,update_settings,add_member,get_members,update_member,delete_member,get_contributions,add_contribution,request_credit,get_credits,credit_members
+from .controller import get_settings,update_settings,add_member,get_members,update_member,delete_member,get_contributions,add_contribution,request_credit,get_credits,credit_members,update_credit_status,get_credit,generate_schedule,get_schedule,mark_paid
 
 
 
@@ -49,3 +49,25 @@ def credit_application():
 def get_credit_members():
     if request.method == 'GET': return credit_members()
     else: return 'Method is Not Allowed'
+    
+@app.route("/api/credit/<loan_id>", methods=["GET","PATCH"])
+@cross_origin()
+def edit_loans(loan_id):
+    if request.method == 'GET': return get_credit(loan_id)
+    if request.method == 'PATCH': return update_credit_status(loan_id)
+    else: return 'Method is Not Allowed'
+    
+# Repayment Schedule
+@app.route("/api/credit/<loan_id>/schedule", methods=["GET","POST"])
+@cross_origin()
+def rep_schedule(loan_id):
+    if request.method == 'GET': return get_schedule(loan_id)
+    if request.method == 'POST': return generate_schedule(loan_id)
+    else: return 'Method is Not Allowed'
+    
+@app.route("/api/repayment/<int:installment_number>/pay", methods=["PATCH"])
+@cross_origin()
+def markpaid(installment_number):
+    if request.method == 'PATCH': return mark_paid(installment_number)
+    else: return 'Method is Not Allowed'
+    

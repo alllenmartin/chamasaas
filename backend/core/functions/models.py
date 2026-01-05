@@ -1,12 +1,15 @@
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import relationship
 import enum
 from datetime import date
 from core import db
+from datetime import timedelta
 from datetime import datetime
 
 
 # Loan Status
 class CreditStatusEnum(enum.Enum):
+    Pending= "Pending"
     Active = "Active"
     Completed = "Completed"
     Defaulted = "Defaulted"
@@ -55,6 +58,7 @@ class ChamaSettings(db.Model):
         
 # Member model
 class Member(db.Model):
+    __tablename__ = "member" 
     id = db.Column(db.String(8), primary_key=True)  # ID number
     name = db.Column(db.String(100), nullable=False)
     phone = db.Column(db.String(15), nullable=False)
@@ -93,29 +97,87 @@ class Contribution(db.Model):
         }
         
 class Credit(db.Model):
+    __tablename__ = "credit"
     id = db.Column(db.Integer, primary_key=True)  # internal PK
     loan_id = db.Column(db.String(10), unique=True, nullable=False)
-    member_id = db.Column(db.String(8), nullable=False)
+    member_id = db.Column(db.String(8), db.ForeignKey("member.id"), nullable=False)
+    member = relationship("Member", backref="credits", foreign_keys=[member_id])
     amount_requested = db.Column(db.Integer, nullable=False)
     interest_rate = db.Column(db.Float, nullable=False)
     installments = db.Column(db.Integer, nullable=False)
+    amount_paid = db.Column(db.Float, nullable=False, default=0)
+    schedule_generated = db.Column(db.Boolean, default=False)
+
     status = db.Column(
         db.Enum(CreditStatusEnum),
         nullable=False,
-        default=CreditStatusEnum.Active
+        default=CreditStatusEnum.Pending
     )
 
     created_at = db.Column(db.Date, default=date.today)
+    
+    
+    @property
+    def total_payable(self):
+        rate = self.interest_rate or 0
+        return self.amount_requested + (
+            self.amount_requested * rate / 100
+        )
+
+    @property
+    def remaining_balance(self):
+        paid = self.amount_paid or 0
+        return max(self.total_payable - paid, 0)
+    
+    @property
+    def interest_amount(self):
+        rate = self.interest_rate or 0
+        return self.amount_requested * rate / 100
+    
+    @property
+    def expected_completion_date(self):
+        if self.status == CreditStatusEnum.Pending:
+            return None
+
+        # Example assumption: monthly installments
+        months = self.installments or 0
+        return self.created_at + timedelta(days=30 * months)
+
 
     def to_dict(self):
         return {
             "loanId": self.loan_id,
             "memberId": self.member_id,
+            "memberName": self.member.name if self.member else "",
             "amountRequested": self.amount_requested,
             "interestRate": self.interest_rate,
+            "interestAmount": round(self.interest_amount, 2),
             "installments": self.installments,
+            "amountPaid": self.amount_paid or 0,
+            "totalPayable": round(self.total_payable, 2),
+            "remainingBalance": round(self.remaining_balance, 2),
+            "expectedCompletionDate": (
+                self.expected_completion_date.isoformat()
+                if self.expected_completion_date
+                else None
+            ),
             "status": self.status.value,
             "createdAt": self.created_at.isoformat(),
         }
+
+class CreditRepayment(db.Model):
+    __tablename__ = "credit_repayments"
+    id = db.Column(db.Integer, primary_key=True)
+    loan_id = db.Column(db.String(10), db.ForeignKey("credit.loan_id"), nullable=False)
+    installment_number = db.Column(db.Integer, nullable=False)
+    due_date = db.Column(db.Date, nullable=False)
+    principal = db.Column(db.Float, nullable=False)
+    interest = db.Column(db.Float, nullable=False)
+    total = db.Column(db.Float, nullable=False)
+    paid = db.Column(db.Boolean, default=False)
+    paid_at = db.Column(db.Date, nullable=True)
+    remaining_balance = db.Column(db.Float, nullable=False)
+
+
         
 

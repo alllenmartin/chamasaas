@@ -9,7 +9,7 @@ import UserRegister from "./components/UserRegister";
 import Login from "./components/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Unauthorized from "./components/Unauthorized";
-
+import CreditCard from "./components/CreditCard";
 
 const App = () => {
   return (
@@ -69,6 +69,14 @@ const App = () => {
         element={
           <ProtectedRoute>
             <CreditList />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/credit/:loanId"
+        element={
+          <ProtectedRoute>
+            <CreditCard />
           </ProtectedRoute>
         }
       />

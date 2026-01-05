@@ -1,0 +1,166 @@
+.credit-card {
+  max-width: 550px;
+  margin: 40px auto;
+  padding: 30px;
+  background: linear-gradient(145deg, #fefefe, #f4f4f4);
+  border-radius: 15px;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #333;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.credit-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.credit-card h2 {
+  text-align: center;
+  margin-bottom: 25px;
+  color: #1e3a8a;
+  font-size: 24px;
+  letter-spacing: 0.5px;
+}
+
+.credit-card .card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.credit-card .card-row:last-child {
+  border-bottom: none;
+}
+
+.credit-card .card-row strong {
+  color: #1f2937;
+}
+
+.credit-card .remaining {
+  color: #dc2626;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+.credit-card select {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #1f2937;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.credit-card select:disabled {
+  background: #e5e7eb;
+  cursor: not-allowed;
+}
+
+.credit-card button {
+  margin-top: 20px;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.credit-card button:hover {
+  background: #1e40af;
+}
+
+.credit-card button:disabled {
+  background: #93c5fd;
+  cursor: not-allowed;
+}
+
+/* =========================
+   Repayment Schedule
+========================= */
+
+.schedule-card {
+  margin-top: 30px;
+  padding: 20px;
+  background: #f8fafc;
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px #e5e7eb;
+}
+
+.schedule-card h3 {
+  margin-bottom: 15px;
+  color: #1e3a8a;
+  font-size: 18px;
+  text-align: center;
+}
+
+.schedule-item {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+.schedule-index {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.schedule-details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  row-gap: 6px;
+  column-gap: 12px;
+  font-size: 14px;
+}
+
+.schedule-details span {
+  color: #374151;
+}
+
+.schedule-details strong {
+  color: #111827;
+}
+
+.amount {
+  font-weight: 600;
+}
+
+.amount.principal {
+  color: #0f766e;
+}
+
+.amount.interest {
+  color: #b45309;
+}
+
+.amount.total {
+  color: #1e40af;
+}
+
+.amount.remaining {
+  color: #dc2626;
+}
+
+
+
