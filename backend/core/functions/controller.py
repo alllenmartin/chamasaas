@@ -249,27 +249,45 @@ def add_months(d, months):
 # =========================
 # Generate Repayment Schedule
 # =========================
-def get_schedule(loanId):
-    # Make sure the credit exists
-    credit = Credit.query.filter_by(loan_id=loanId).first_or_404()
+# def get_schedule(loanId):
+#     # Make sure the credit exists
+#     credit = Credit.query.filter_by(loan_id=loanId).first_or_404()
 
-    # Fetch all repayments for this loan
-    repayments = CreditRepayment.query.filter_by(loan_id=loanId).order_by(CreditRepayment.installment_number).all()
+#     # Fetch all repayments for this loan
+#     repayments = CreditRepayment.query.filter_by(loan_id=loanId).order_by(CreditRepayment.installment_number).all()
 
-    # Convert them to dictionaries for frontend
-    schedule_list = []
-    for item in repayments:
-        schedule_list.append({
-            "installment_number": item.installment_number,
-            "due_date": item.due_date.isoformat(),
-            "principal": float(item.principal),
-            "interest": float(item.interest),
-            "total": float(item.total),
-            "remaining_balance": float(item.remaining_balance),
-            "paid": item.paid,
-        })
+#     # Convert them to dictionaries for frontend
+#     schedule_list = []
+#     for item in repayments:
+#         schedule_list.append({
+#             "installment_number": item.installment_number,
+#             "due_date": item.due_date.isoformat(),
+#             "principal": float(item.principal),
+#             "interest": float(item.interest),
+#             "total": float(item.total),
+#             "remaining_balance": float(item.remaining_balance),
+#             "paid": item.paid,
+#         })
 
-    return jsonify({"schedule": schedule_list})
+#     return jsonify({"schedule": schedule_list})
+
+def get_schedule(loan_id):
+    loan = Credit.query.filter_by(loan_id=loan_id).first()
+    if not loan:
+        return jsonify({"error": "Loan not found"}), 404
+
+    repayments = CreditRepayment.query.filter_by(loan_id=loan_id).order_by(CreditRepayment.installment_number).all()
+    schedule = [r.to_dict() for r in repayments]
+
+    return jsonify({
+        "loan": {
+            "loan_id": loan.loan_id,
+            "amount_paid": loan.amount_paid,
+            "remaining_balance": loan.remaining_balance,
+            "status": loan.status.value,
+        },
+        "schedule": schedule
+    }), 200
 
 
 
@@ -408,24 +426,22 @@ def pay_repayments():
             continue
 
         if repayment.paid:
-            # Skip already paid installments
-            continue
+            continue  # skip already fully paid installments
 
-        # Determine amount to mark as paid
+        # Determine amount to apply
         paid_amount = item.get("amount", repayment.total)
+        repayment.amount_paid = (repayment.amount_paid or 0) + paid_amount
 
-        # 1️⃣ Mark repayment
-        repayment.paid = True
-        repayment.paid_at = date.today()
-        repayment.amount_paid = paid_amount
+        # Mark installment fully paid if applicable
+        if repayment.amount_paid >= repayment.total:
+            repayment.paid = True
+            repayment.paid_at = date.today()
 
-        # 2️⃣ Update loan totals
+        # Update total loan amount paid
         credit.amount_paid += paid_amount
-        credit.remaining_balance = credit.total_payable - credit.amount_paid
 
-        # 3️⃣ Update loan status if fully paid
-        if credit.remaining_balance <= 0:
-            credit.remaining_balance = 0
+        # Update loan status if fully paid
+        if credit.amount_paid >= credit.total_payable:
             credit.status = CreditStatusEnum.Completed
 
         response_repayments.append({
@@ -433,7 +449,7 @@ def pay_repayments():
             "installment_number": repayment.installment_number,
             "loan_id": repayment.loan_id,
             "paid": repayment.paid,
-            "paid_at": repayment.paid_at.isoformat(),
+            "paid_at": repayment.paid_at.isoformat() if repayment.paid_at else None,
             "amount_paid": repayment.amount_paid
         })
 
@@ -442,7 +458,6 @@ def pay_repayments():
     return jsonify({
         "message": "Repayments updated successfully",
         "repayments": response_repayments,
-        # Return loan info for the first repayment as reference
         "loan": {
             "loan_id": credit.loan_id,
             "status": credit.status.value,
@@ -451,51 +466,56 @@ def pay_repayments():
         } if response_repayments else {}
     }), 200
 
-def mark_paid(installment_number):
-    # Find the repayment by its installment_number
-    repayment = CreditRepayment.query.filter_by(installment_number=installment_number).first()
-    if not repayment:
-        return jsonify({"error": "Installment not found"}), 404
 
-    if repayment.paid:
-        return jsonify({"error": "Already paid"}), 400
+def mark_paid(loan_id, installment_number):
+    # Get repayment for this loan + installment
+    repayment = CreditRepayment.query.filter_by(
+        loan_id=loan_id,
+        installment_number=installment_number
+    ).first_or_404()
+    print(loan_id)
 
-    # Mark as paid
-    repayment.paid = True
-    repayment.paid_at = date.today()
-    repayment.amount_paid = repayment.total  # full payment
-
-    # Update parent loan
-    credit = Credit.query.filter_by(loan_id=repayment.loan_id).first()
+    credit = Credit.query.filter_by(loan_id=loan_id).first()
     if not credit:
         return jsonify({"error": "Loan not found"}), 404
 
-    credit.amount_paid += repayment.total  # ✅ only update amount_paid
+    if repayment.paid:
+        return jsonify({"error": "Installment already fully paid"}), 400
 
-    # Update status if fully paid
+    # Determine amount to pay (partial or full)
+    pay_amount = request.json.get("amount", repayment.total - (repayment.amount_paid or 0))
+    pay_amount = min(pay_amount, repayment.total - (repayment.amount_paid or 0))  # cap at remaining
+
+    # Update repayment
+    repayment.amount_paid = (repayment.amount_paid or 0) + pay_amount
+    if repayment.amount_paid >= repayment.total:
+        repayment.paid = True
+        repayment.paid_at = date.today()
+
+    # Update parent loan
+    credit.amount_paid += pay_amount
+    # credit.remaining_balance = max(credit.total_payable - credit.amount_paid, 0)
     if credit.remaining_balance <= 0:
         credit.status = CreditStatusEnum.Completed
 
     db.session.commit()
 
     return jsonify({
-        "message": "Installment marked as paid",
+        "message": "Installment updated successfully",
         "repayment": {
             "installment_number": repayment.installment_number,
             "loan_id": repayment.loan_id,
             "paid": repayment.paid,
-            "paid_at": repayment.paid_at.isoformat(),
-            "amount_paid": repayment.amount_paid
+            "amount_paid": repayment.amount_paid,
+            "paid_at": repayment.paid_at.isoformat() if repayment.paid_at else None,
         },
         "loan": {
             "loan_id": credit.loan_id,
-            "status": credit.status.value,
             "amount_paid": credit.amount_paid,
-            "remaining_balance": credit.remaining_balance  # read-only property
+            "remaining_balance": credit.remaining_balance,
+            "status": credit.status.value,
         }
     }), 200
-
-
 
 
 

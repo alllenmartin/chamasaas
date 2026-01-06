@@ -65,9 +65,9 @@ def rep_schedule(loan_id):
     if request.method == 'POST': return generate_schedule(loan_id)
     else: return 'Method is Not Allowed'
     
-@app.route("/api/repayment/<int:installment_number>/pay", methods=["PATCH"])
+@app.route("/api/repayment/<loan_id>/<int:installment_number>/pay", methods=["PATCH"])
 @cross_origin()
-def markpaid(installment_number):
-    if request.method == 'PATCH': return mark_paid(installment_number)
+def markpaid(loan_id,installment_number):
+    if request.method == 'PATCH': return mark_paid(loan_id,installment_number)
     else: return 'Method is Not Allowed'
     

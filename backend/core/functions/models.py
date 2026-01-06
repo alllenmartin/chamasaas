@@ -176,8 +176,24 @@ class CreditRepayment(db.Model):
     total = db.Column(db.Float, nullable=False)
     paid = db.Column(db.Boolean, default=False)
     paid_at = db.Column(db.Date, nullable=True)
+    amount_paid = db.Column(db.Float, nullable=False, default=0)
     remaining_balance = db.Column(db.Float, nullable=False)
-
+    
+    def to_dict(self):
+        remaining = max(self.total - (self.amount_paid or 0), 0)
+        return {
+            "id": self.id,
+            "installment_number": self.installment_number,
+            "loan_id": self.loan_id,
+            "due_date": self.due_date.isoformat(),
+            "principal": self.principal,
+            "interest": self.interest,
+            "total": self.total,
+            "paid": self.paid,
+            "paid_at": self.paid_at.isoformat() if self.paid_at else None,
+            "amount_paid": self.amount_paid,
+            "remaining_balance": remaining,
+        }
 
         
 
