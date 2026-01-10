@@ -2,9 +2,8 @@
 from flask import request
 from flask_cors import cross_origin
 from app import app
-from .controller import get_settings,update_settings,add_member,get_members,update_member,delete_member,get_contributions,add_contribution,request_credit,get_credits,credit_members,update_credit_status,get_credit,generate_schedule,get_schedule,mark_paid
-
-
+from .controller import get_settings,update_settings,add_member,get_members,update_member,delete_member,get_contributions,add_contribution,request_credit,get_credits,credit_members,update_credit_status,get_credit,generate_schedule,get_schedule,mark_paid,get_vendor_ledger,receive_vendor_payment,get_vendors,create_vendor,delete_vendor,update_vendor,get_contributions_monthly,get_repayment_schedule
+from .mpesa_flow import get_mpesa_transactions,initiate_MPESA_push,initiate_mcash
 
 @app.route("/api/settings", methods=['GET','POST'])
 @cross_origin()
@@ -32,6 +31,12 @@ def updatemembers(member_id):
 def contrbss():
     if request.method == 'GET': return get_contributions()
     if request.method == 'POST': return add_contribution()
+    else: return 'Method is Not Allowed'
+    
+@app.route("/api/contributionsbymonth", methods=['GET'])
+@cross_origin()
+def contrbssbymonth():
+    if request.method == 'GET': return get_contributions_monthly()
     else: return 'Method is Not Allowed'
     
     
@@ -65,9 +70,57 @@ def rep_schedule(loan_id):
     if request.method == 'POST': return generate_schedule(loan_id)
     else: return 'Method is Not Allowed'
     
+@app.route("/api/repayments", methods=["GET"])   
+@cross_origin() 
+def get_repayment_scheduless():
+    if request.method == 'GET': return get_repayment_schedule()
+    else: return 'Method is Not Allowed'
+    
 @app.route("/api/repayment/<loan_id>/<int:installment_number>/pay", methods=["PATCH"])
 @cross_origin()
 def markpaid(loan_id,installment_number):
     if request.method == 'PATCH': return mark_paid(loan_id,installment_number)
     else: return 'Method is Not Allowed'
+    
+@app.route("/api/vendor-ledger", methods=["GET"])
+@cross_origin()
+def vLedger():
+    if request.method == 'GET': return get_vendor_ledger()
+    else: return 'Method is Not Allowed'
+
+@app.route("/api/vendor-ledger/<int:id>/receive", methods=["PATCH"])
+@cross_origin()
+def RVendorFee(id):
+    if request.method == 'PATCH': return receive_vendor_payment(id)
+    else: return 'Method is Not Allowed'   
+    
+@app.route("/api/vendors", methods=["GET","POST"])
+@cross_origin()
+def vendorss():
+    if request.method == 'GET': return get_vendors()
+    if request.method == 'POST': return create_vendor()
+    else: return 'Method is Not Allowed'  
+    
+@app.route("/api/vendors/<int:id>", methods=["PUT","DELETE"])
+@cross_origin()
+def updatevendorss(id):
+    if request.method == 'PUT': return update_vendor(id)
+    if request.method == 'DELETE': return delete_vendor(id)
+    else: return 'Method is Not Allowed'  
+    
+    
+@app.route("/api/stk-push", methods=['GET','POST'])
+@cross_origin()
+def initiate_transaction():
+    if request.method == 'GET': return get_mpesa_transactions()
+    if request.method == 'POST': return initiate_MPESA_push()
+    else: return 'Method is Not Allowed'
+    
+@app.route("/api/mcash", methods=['GET','POST'])
+@cross_origin()
+def mcash_init():
+    # if request.method == 'GET': return get_mpesa_transactions()
+    if request.method == 'POST': return initiate_mcash()
+    else: return 'Method is Not Allowed'
+
     

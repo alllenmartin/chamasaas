@@ -52,7 +52,10 @@ const Members = () => {
     if (!newMember.name.trim()) return toast.error("Full Name is required");
     if (!/^\d{6,8}$/.test(newMember.id))
       return toast.error("ID Number must be 6–8 digits");
-    if (!/^07\d{8}$/.test(newMember.phone) && !/^\+2547\d{8}$/.test(newMember.phone))
+    if (
+      !/^07\d{8}$/.test(newMember.phone) &&
+      !/^\+2547\d{8}$/.test(newMember.phone)
+    )
       return toast.error("Phone must be 070xxxxxxx or +2547xxxxxxx");
 
     try {
@@ -86,18 +89,26 @@ const Members = () => {
     if (!editingMember) return;
     if (!/^\d{6,8}$/.test(editingMember.id))
       return toast.error("ID Number must be 6–8 digits");
-    if (!/^07\d{8}$/.test(editingMember.phone) && !/^\+2547\d{8}$/.test(editingMember.phone))
+    if (
+      !/^07\d{8}$/.test(editingMember.phone) &&
+      !/^\+2547\d{8}$/.test(editingMember.phone)
+    )
       return toast.error("Phone must be 070xxxxxxx or +2547xxxxxxx");
 
     try {
-      const res = await fetch(`http://127.0.0.1:5000/api/members/${editingMember.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editingMember),
-      });
+      const res = await fetch(
+        `http://127.0.0.1:5000/api/members/${editingMember.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(editingMember),
+        }
+      );
       if (!res.ok) throw new Error("Failed to update member");
       const updatedMember = await res.json();
-      setMembers(members.map((m) => (m.id === updatedMember.id ? updatedMember : m)));
+      setMembers(
+        members.map((m) => (m.id === updatedMember.id ? updatedMember : m))
+      );
       toast.success(`${updatedMember.name} updated successfully!`);
       setEditingMember(null);
     } catch (err) {
@@ -130,8 +141,24 @@ const Members = () => {
   /** Export CSV */
   const handleExport = () => {
     const csvRows = [
-      ["ID Number", "Full Name", "Phone", "Role", "Amount Paid", "Status", "Registration Paid"],
-      ...members.map((m) => [m.id, m.name, m.phone, m.role, m.amountPaid, m.status, m.registrationPaid]),
+      [
+        "ID Number",
+        "Full Name",
+        "Phone",
+        "Role",
+        "Amount Paid",
+        "Status",
+        "Registration Paid",
+      ],
+      ...members.map((m) => [
+        m.id,
+        m.name,
+        m.phone,
+        m.role,
+        m.amountPaid,
+        m.status,
+        m.registrationPaid,
+      ]),
     ];
     const csvContent = csvRows.map((r) => r.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv" });
@@ -163,23 +190,31 @@ const Members = () => {
               type="text"
               placeholder="Full Name *"
               value={newMember.name}
-              onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
+              onChange={(e) =>
+                setNewMember({ ...newMember, name: e.target.value })
+              }
             />
             <input
               type="text"
               placeholder="ID Number *"
               value={newMember.id}
-              onChange={(e) => setNewMember({ ...newMember, id: e.target.value })}
+              onChange={(e) =>
+                setNewMember({ ...newMember, id: e.target.value })
+              }
             />
             <input
               type="text"
               placeholder="Phone Number *"
               value={newMember.phone}
-              onChange={(e) => setNewMember({ ...newMember, phone: e.target.value })}
+              onChange={(e) =>
+                setNewMember({ ...newMember, phone: e.target.value })
+              }
             />
             <select
               value={newMember.role}
-              onChange={(e) => setNewMember({ ...newMember, role: e.target.value })}
+              onChange={(e) =>
+                setNewMember({ ...newMember, role: e.target.value })
+              }
             >
               <option value="Member">Member</option>
               <option value="Treasurer">Treasurer</option>
@@ -204,36 +239,62 @@ const Members = () => {
         {loading ? (
           <p>Loading members...</p>
         ) : (
-          <div className="member-table">
-            <div className="table-header">
-              <span>Name</span>
-              <span>ID</span>
-              <span>Phone</span>
-              <span>Role</span>
-              <span>Status</span>
-              <span>Registered</span>
-              <span>Credit Eligible</span>
-              <span>Action</span>
-            </div>
+          <table className="members-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>ID</th>
+                <th>Phone</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Registered</th>
+                <th>Credit Eligible</th>
+                <th>Action</th>
+              </tr>
+            </thead>
 
-            {filteredMembers.map((member) => (
-              <div className="table-row" key={member.id}>
-                <span>{member.name}</span>
-                <span>{member.id}</span>
-                <span>{member.phone}</span>
-                <span>{member.role}</span>
-                <span className={`status ${member.status.toLowerCase()}`}>{member.status}</span>
-                <span>{member.registrationPaid ? "True" : "False"}</span>
-                <span style={{ color: isCreditEligible(member) ? "green" : "red", fontWeight: "bold" }}>
-                  {isCreditEligible(member) ? "Eligible" : "Not Eligible"}
-                </span>
-                <div>
-                  <button className="view-btn" onClick={() => setEditingMember(member)}>Edit</button>
-                  <button className="view-btn" onClick={() => handleRemoveMember(member.id)} style={{ marginLeft: "6px" }}>Remove</button>
-                </div>
-              </div>
-            ))}
-          </div>
+            <tbody>
+              {filteredMembers.map((member) => (
+                <tr key={member.id}>
+                  <td>{member.name}</td>
+                  <td>{member.id}</td>
+                  <td>{member.phone}</td>
+                  <td>{member.role}</td>
+
+                  <td>
+                    <span className={`badge ${member.status.toLowerCase()}`}>
+                      {member.status}
+                    </span>
+                  </td>
+
+                  <td>{member.registrationPaid ? "True" : "False"}</td>
+
+                  <td
+                    className={
+                      isCreditEligible(member) ? "eligible" : "not-eligible"
+                    }
+                  >
+                    {isCreditEligible(member) ? "Eligible" : "Not Eligible"}
+                  </td>
+
+                  <td className="actions">
+                    <button
+                      className="edit-btn"
+                      onClick={() => setEditingMember(member)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="remove-btn"
+                      onClick={() => handleRemoveMember(member.id)}
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </main>
 
@@ -241,32 +302,89 @@ const Members = () => {
         <div className="modal-backdrop">
           <div className="modal">
             <h3>Edit Member</h3>
-            <input type="text" value={editingMember.name} onChange={(e) => setEditingMember({ ...editingMember, name: e.target.value })} />
-            <input type="text" value={editingMember.id} onChange={(e) => setEditingMember({ ...editingMember, id: e.target.value })} />
-            <input type="text" value={editingMember.phone} onChange={(e) => setEditingMember({ ...editingMember, phone: e.target.value })} />
-            <input type="number" value={editingMember.amountPaid} onChange={(e) => setEditingMember({ ...editingMember, amountPaid: Number(e.target.value) })} />
-            <select value={editingMember.role} onChange={(e) => setEditingMember({ ...editingMember, role: e.target.value })}>
+            <input
+              type="text"
+              value={editingMember.name}
+              onChange={(e) =>
+                setEditingMember({ ...editingMember, name: e.target.value })
+              }
+            />
+            <input
+              type="text"
+              value={editingMember.id}
+              onChange={(e) =>
+                setEditingMember({ ...editingMember, id: e.target.value })
+              }
+            />
+            <input
+              type="text"
+              value={editingMember.phone}
+              onChange={(e) =>
+                setEditingMember({ ...editingMember, phone: e.target.value })
+              }
+            />
+            <input
+              type="number"
+              value={editingMember.amountPaid}
+              onChange={(e) =>
+                setEditingMember({
+                  ...editingMember,
+                  amountPaid: Number(e.target.value),
+                })
+              }
+            />
+            <select
+              value={editingMember.role}
+              onChange={(e) =>
+                setEditingMember({ ...editingMember, role: e.target.value })
+              }
+            >
               <option value="Member">Member</option>
               <option value="Treasurer">Treasurer</option>
               <option value="Chairperson">Chairperson</option>
             </select>
-            <select value={editingMember.status} onChange={(e) => setEditingMember({ ...editingMember, status: e.target.value })}>
+            <select
+              value={editingMember.status}
+              onChange={(e) =>
+                setEditingMember({ ...editingMember, status: e.target.value })
+              }
+            >
               <option value="Paid">Paid</option>
               <option value="Unpaid">Unpaid</option>
             </select>
 
             <p>
               Credit Eligibility:{" "}
-              <span style={{ color: isCreditEligible(editingMember) ? "green" : "red", fontWeight: "bold" }}>
+              <span
+                style={{
+                  color: isCreditEligible(editingMember) ? "green" : "red",
+                  fontWeight: "bold",
+                }}
+              >
                 {isCreditEligible(editingMember) ? "Eligible" : "Not Eligible"}
               </span>
             </p>
 
             <div className="modal-actions">
-              <button className="view-btn" onClick={() => setEditingMember(null)}>Cancel</button>
-              <button className="view-btn" onClick={handleSaveEdit}>Save</button>
+              <button
+                className="view-btn"
+                onClick={() => setEditingMember(null)}
+              >
+                Cancel
+              </button>
+              <button className="view-btn" onClick={handleSaveEdit}>
+                Save
+              </button>
               {!editingMember.registrationPaid && (
-                <button className="view-btn" onClick={() => setEditingMember({ ...editingMember, registrationPaid: true })}>
+                <button
+                  className="view-btn"
+                  onClick={() =>
+                    setEditingMember({
+                      ...editingMember,
+                      registrationPaid: true,
+                    })
+                  }
+                >
                   Mark Reg Paid
                 </button>
               )}

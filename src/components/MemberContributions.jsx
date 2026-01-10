@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import "./Members.css";
+import "./Contribution.css";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 import {
   Chart as ChartJS,
@@ -21,10 +24,11 @@ const MemberContributions = () => {
   const [members, setMembers] = useState([]);
   const [contributions, setContributions] = useState([]);
   const [selectedMemberId, setSelectedMemberId] = useState("");
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(0);
   const [month, setMonth] = useState("");
   const [viewAll, setViewAll] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [stkLoading, setStkLoading] = useState(false);
 
   /** Fetch members and contributions from backend */
   useEffect(() => {
@@ -34,12 +38,14 @@ const MemberContributions = () => {
         const membersData = await membersRes.json();
         setMembers(membersData);
 
-        const contribRes = await fetch("http://127.0.0.1:5000/api/contributions");
+        const contribRes = await fetch(
+          "http://127.0.0.1:5000/api/contributions"
+        );
         const contribData = await contribRes.json();
         setContributions(contribData);
       } catch (err) {
         console.error(err);
-        alert("Failed to fetch data from server");
+        toast.error("Failed to fetch data from server");
       } finally {
         setLoading(false);
       }
@@ -54,12 +60,13 @@ const MemberContributions = () => {
   ====================== */
   const handleAddContribution = async () => {
     if (!selectedMemberId || !amount || !month) {
-      alert("Fill all fields");
+      toast.error("Fill all fields");
       return;
     }
 
     let remainingAmount = Number(amount);
-    const regRemaining = registrationFee - (selectedMember.registrationPaidAmount || 0);
+    const regRemaining =
+      registrationFee - (selectedMember.registrationPaidAmount || 0);
 
     // Auto-deduct registration fee first
     let registrationPaidAmount = selectedMember.registrationPaidAmount || 0;
@@ -67,13 +74,15 @@ const MemberContributions = () => {
       if (remainingAmount >= regRemaining) {
         remainingAmount -= regRemaining;
         registrationPaidAmount = registrationFee;
-        alert(
+        toast.success(
           `Registration fee of KES ${registrationFee.toLocaleString()} has been fully paid.`
         );
       } else {
         registrationPaidAmount += remainingAmount;
         remainingAmount = 0;
-        alert(`Partial registration payment of KES ${remainingAmount.toLocaleString()} recorded.`);
+        toast.success(
+          `Partial registration payment of KES ${remainingAmount.toLocaleString()} recorded.`
+        );
       }
     }
 
@@ -92,7 +101,7 @@ const MemberContributions = () => {
       );
     } catch (err) {
       console.error(err);
-      alert("Failed to update member registration");
+      toast.error("Failed to update member registration");
       return;
     }
 
@@ -115,11 +124,11 @@ const MemberContributions = () => {
       });
       const savedContribution = await res.json();
       setContributions([...contributions, savedContribution]);
-      setAmount("");
+      // setAmount("");
       setMonth("");
     } catch (err) {
       console.error(err);
-      alert("Failed to save contribution");
+      toast.error("Failed to save contribution");
     }
   };
 
@@ -144,12 +153,146 @@ const MemberContributions = () => {
       {
         label: "Monthly Inflow (KES)",
         data: Object.values(monthlyTotals),
-        backgroundColor: "#2563eb",
+        backgroundColor: "#2c3e50",
       },
     ],
   };
 
-  const totalCollected = visibleContributions.reduce((sum, c) => sum + c.amount, 0);
+  const totalCollected = visibleContributions.reduce(
+    (sum, c) => sum + c.amount,
+    0
+  );
+
+  // STK push
+  // STK push
+  // const handleStkPush = async () => {
+  //   if (!selectedMember || amount <= 0 || !month) {
+  //     toast.error("Select member, month and enter amount");
+  //     return;
+  //   }
+
+  //   const payload = {
+  //     phone_number: selectedMember.phone,
+  //     amount: Number(amount),
+  //     // month,
+  //     reference: selectedMember.id,
+  //   };
+
+  //    const mcashpayload = {
+  //     phone_number: selectedMember.phone,
+  //     amount: Number(amount),
+  //     month:month,
+  //     reference: selectedMember.id,
+  //     code: 'CONTRIBUTION',
+  //   };
+
+  //   console.log("STK Push payload:", mcashpayload);
+
+  //    try {
+  //     const res = await fetch("http://127.0.0.1:5000/api/mcash", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify(mcashpayload),
+  //     });
+
+  //     const data = await res.json();
+
+  //     if (!res.ok) {
+  //       throw new Error(data.message || "Savings failed");
+  //     }
+
+  //     // OPTIONAL: clear inputs
+  //     // setAmount(0);
+  //     // setMonth("");
+
+  //   } catch (err) {
+  //     console.error(err);
+  //     toast.error("Failed to save to mcash");
+  //   }
+
+  //   try {
+  //     const res = await fetch("http://127.0.0.1:5000/api/stk-push", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify(payload),
+  //     });
+
+  //     const data = await res.json();
+
+  //     if (!res.ok) {
+  //       throw new Error(data.message || "STK Push failed");
+  //     }
+
+  //     toast.success("STK Push sent successfully. Check phone to complete payment.");
+
+  //     // OPTIONAL: clear inputs
+  //     // setAmount(0);
+  //     // setMonth("");
+
+  //   } catch (err) {
+  //     console.error(err);
+  //     toast.error("Failed to send STK Push");
+  //   }
+  // };
+
+  const handleStkPush = async () => {
+    if (!selectedMember || amount <= 0 || !month) {
+      toast.error("Select member, month and enter amount");
+      return;
+    }
+
+    const payload = {
+      phone_number: selectedMember.phone,
+      amount: Number(amount),
+      reference: selectedMember.id,
+    };
+
+    const mcashpayload = {
+      phone_number: selectedMember.phone,
+      amount: Number(amount),
+      month: month,
+      reference: selectedMember.id,
+      code: "CONTRIBUTION",
+      LoanNo: '',
+    };
+
+ 
+
+    try {
+      setStkLoading(true); // ⬅ Start loading
+      toast.info(`Sending STK Push to ${selectedMember.phone}...`);
+
+      // Save to mcash first
+      const mcashRes = await fetch("http://127.0.0.1:5000/api/mcash", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(mcashpayload),
+      });
+
+      const mcashData = await mcashRes.json();
+      if (!mcashRes.ok)
+        throw new Error(mcashData.message || "Failed to save to mcash");
+
+      // Send STK Push
+      const stkRes = await fetch("http://127.0.0.1:5000/api/stk-push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const stkData = await stkRes.json();
+      if (!stkRes.ok) throw new Error(stkData.message || "STK Push failed");
+
+      toast.success(
+        `STK Push sent to ${selectedMember.phone}. Check your phone to complete payment.`
+      );
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message);
+    } finally {
+      setStkLoading(false); // ⬅ Stop loading
+    }
+  };
 
   if (loading) return <p>Loading data...</p>;
 
@@ -167,12 +310,17 @@ const MemberContributions = () => {
 
         {!viewAll && (
           <div style={{ marginBottom: "12px" }}>
-            <select value={selectedMemberId} onChange={(e) => setSelectedMemberId(e.target.value)}>
+            <select
+              value={selectedMemberId}
+              onChange={(e) => setSelectedMemberId(e.target.value)}
+            >
               <option value="">Select Member</option>
               {members.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}{" "}
-                  {m.registrationPaidAmount < registrationFee ? "(Registration Pending)" : ""}
+                  {m.registrationPaidAmount < registrationFee
+                    ? "(Registration Pending)"
+                    : ""}
                 </option>
               ))}
             </select>
@@ -187,16 +335,42 @@ const MemberContributions = () => {
               </p>
             ) : (
               <>
-                <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
+                <input
+                  type="month"
+                  value={month}
+                  onChange={(e) => setMonth(e.target.value)}
+                />
+
                 <input
                   type="number"
                   placeholder="Amount"
-                  value={amount}
+                  value={amount || ""}
                   onChange={(e) => setAmount(e.target.value)}
                   style={{ marginLeft: "6px" }}
                 />
-                <button className="view-btn" onClick={handleAddContribution} style={{ marginLeft: "6px" }}>
+
+                <button
+                  className="view-btn"
+                  onClick={handleAddContribution}
+                  style={{ marginLeft: "6px" }}
+                >
                   Add
+                </button>
+
+                {/* STK Push Button */}
+                <button
+                  className="view-btn"
+                  onClick={handleStkPush}
+                  disabled={amount <= 0 || stkLoading}
+                  style={{
+                    marginLeft: "6px",
+                    backgroundColor: "#40739e",
+                    color: "#fff",
+                  }}
+                >
+                  {stkLoading
+                    ? `Sending STK Push to ${selectedMember.phone}...`
+                    : "STK Push"}
                 </button>
               </>
             )}
@@ -204,32 +378,50 @@ const MemberContributions = () => {
         )}
 
         <p style={{ marginBottom: "16px" }}>
-          <strong>Total Collected:</strong> KES {totalCollected.toLocaleString()}
+          <strong>Total Collected:</strong> KES{" "}
+          {totalCollected.toLocaleString()}
         </p>
 
-        <div className="member-table">
-          <div className="table-header">
-            <span>Member</span>
-            <span>Month</span>
-            <span>Amount</span>
-            <span>Date</span>
-          </div>
-
-          {visibleContributions.map((c, index) => (
-            <div className="table-row" key={index}>
-              <span>{c.memberName}</span>
-              <span>{c.month}</span>
-              <span>KES {c.amount.toLocaleString()}</span>
-              <span>{c.date}</span>
-            </div>
-          ))}
-
-          {visibleContributions.length === 0 && <p>No contributions found.</p>}
-        </div>
+        <table className="contributions-table">
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th>Month</th>
+              <th>Amount</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleContributions.length > 0 ? (
+              visibleContributions.map((c, index) => (
+                <tr key={index}>
+                  <td>{c.memberName}</td>
+                  <td>{c.month}</td>
+                  <td>KES {c.amount.toLocaleString()}</td>
+                  <td>{c.date}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="4" className="no-data">
+                  No contributions found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
 
         <h2 style={{ marginTop: "40px" }}>Monthly Inflow</h2>
         <Bar data={chartData} />
       </main>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+      />
     </div>
   );
 };

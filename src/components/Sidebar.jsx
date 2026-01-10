@@ -34,7 +34,9 @@ const Sidebar = ({ active = "Dashboard" }) => {
       {/* User Info */}
       {user && (
         <div className="sidebar-user">
-          <div className="user-avatar">{user.name?.charAt(0).toUpperCase()}</div>
+          <div className="user-avatar">
+            {user.name?.charAt(0).toUpperCase()}
+          </div>
           <div className="user-details">
             <span className="user-name">{user.name}</span>
             <span className="user-role">{formatRole(user.role)}</span>
@@ -78,6 +80,15 @@ const Sidebar = ({ active = "Dashboard" }) => {
             </li>
           )}
 
+          {canAccess(["treasurer"]) && (
+            <li className={active === "Vendor" ? "active" : ""}>
+              <Link to="/vendor">
+                <span className="icon">🏪</span>
+                <span className="text">Vendors</span>
+              </Link>
+            </li>
+          )}
+
           {role.toLowerCase() === "admin" && (
             <li className={active === "Settings" ? "active" : ""}>
               <Link to="/settings">
@@ -91,7 +102,11 @@ const Sidebar = ({ active = "Dashboard" }) => {
 
       {/* Logout */}
       <div className="sidebar-footer">
-        <button className="logout-btn" onClick={handleLogout} disabled={loggingOut}>
+        <button
+          className="logout-btn"
+          onClick={handleLogout}
+          disabled={loggingOut}
+        >
           🚪 Logout
         </button>
       </div>

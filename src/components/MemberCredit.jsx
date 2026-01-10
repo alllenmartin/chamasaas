@@ -169,6 +169,10 @@ const MemberCredit = () => {
               <span>
                 KES{" "}
                 {memberLoans
+                  .filter(
+                    (loan) =>
+                      loan.status === "Active" || loan.status === "Defaulted"
+                  )
                   .reduce((sum, loan) => sum + Number(loan.amountRequested), 0)
                   .toLocaleString()}
               </span>

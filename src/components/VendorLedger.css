@@ -1,0 +1,121 @@
+/* VendorLedger.css */
+
+/* Main container */
+.main-content {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background-color: #f9fafb;
+  min-height: 100vh;
+}
+
+/* Month picker */
+label {
+  font-weight: 500;
+  margin-bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+input[type="month"] {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Table container for horizontal scroll */
+.ledger-table-container {
+  overflow-x: auto;
+}
+
+/* Ledger Table */
+.ledger-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ledger-table th,
+.ledger-table td {
+  border: 1px solid #e5e7eb;
+  padding: 10px 12px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.ledger-table th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+}
+
+.ledger-table tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+/* Amount formatting / Status labels */
+.status-paid {
+  color: #10b981;
+  font-weight: bold;
+}
+
+.status-pending {
+  color: #f59e0b;
+  font-weight: bold;
+}
+
+.status-overdue {
+  color: #ef4444;
+  font-weight: bold;
+}
+
+/* Action button styling */
+.ledger-table button {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.ledger-table button:disabled {
+  background-color: #d1d5db;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.ledger-table button:not(:disabled) {
+  background-color: #10b981;
+  color: #fff;
+}
+
+.ledger-table button:not(:disabled):hover {
+  background-color: #059669; /* darker green on hover */
+}
+.vendor-switch {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0 20px;
+}
+
+.vendor-switch .active {
+  background-color: #2c3e50;
+}
+
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .ledger-table th,
+  .ledger-table td {
+    padding: 8px;
+    font-size: 13px;
+  }
+  input[type="month"] {
+    width: 100%;
+  }
+}

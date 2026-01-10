@@ -15,6 +15,7 @@ const Settings = () => {
     creditMultiplier: "",
     interestRate: "",
     installments: "",
+    loanpenalty:"",
   });
 
   const [errors, setErrors] = useState({});
@@ -103,6 +104,10 @@ const Settings = () => {
       if (!settings.installments || settings.installments < 1) {
         newErrors.installments = "Installments must be at least 1";
       }
+       if (settings.loanpenalty < 0) {
+        newErrors.loanpenalty = "Interest rate cannot be negative";
+      }
+      
     }
 
     setErrors(newErrors);
@@ -307,6 +312,19 @@ const Settings = () => {
                 />
                 {errors.installments && (
                   <span className="error">{errors.installments}</span>
+                )}
+              </div>
+
+                 <div className="form-group">
+                <label>Loan Penalty %</label>
+                <input
+                  type="number"
+                  name="loanpenalty"
+                  value={settings.loanpenalty}
+                  onChange={handleChange}
+                />
+                {errors.loanpenalty && (
+                  <span className="error">{errors.loanpenalty}</span>
                 )}
               </div>
 

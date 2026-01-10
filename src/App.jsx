@@ -10,6 +10,8 @@ import Login from "./components/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Unauthorized from "./components/Unauthorized";
 import CreditCard from "./components/CreditCard";
+import VendorLedger from "./components/VendorLedger";
+import VendorList from "./components/VendorList";
 
 const App = () => {
   return (
@@ -80,6 +82,25 @@ const App = () => {
           </ProtectedRoute>
         }
       />
+       <Route
+        path="/vendors"
+        element={
+          <ProtectedRoute>
+            <VendorList />
+          </ProtectedRoute>
+        }
+      />
+
+        <Route
+        path="/vendors/ledger"
+        element={
+          <ProtectedRoute>
+            <VendorLedger />
+          </ProtectedRoute>
+        }
+      />
+
+      
 
       {/* Optional: protect registration (admin only later) */}
       <Route

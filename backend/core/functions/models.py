@@ -40,6 +40,7 @@ class ChamaSettings(db.Model):
     credit_multiplier = db.Column(db.Float, nullable=True)
     interest_rate = db.Column(db.Float, nullable=True)
     installments = db.Column(db.Integer, nullable=True)
+    penalty_rate = db.Column(db.Float, nullable=True)
 
     def to_dict(self):
         return {
@@ -53,6 +54,7 @@ class ChamaSettings(db.Model):
             "creditMultiplier": self.credit_multiplier,
             "interestRate": self.interest_rate,
             "installments": self.installments,
+            "loanpenalty": self.penalty_rate,
         }
         
         
@@ -107,6 +109,12 @@ class Credit(db.Model):
     installments = db.Column(db.Integer, nullable=False)
     amount_paid = db.Column(db.Float, nullable=False, default=0)
     schedule_generated = db.Column(db.Boolean, default=False)
+    paid_interest = db.Column(db.Float, default=0.0)
+    interest_method = db.Column(db.String(50), default="amortized")
+    paid_penalty = db.Column(db.Numeric(10, 2), default=0)
+   
+
+
 
     status = db.Column(
         db.Enum(CreditStatusEnum),
@@ -117,22 +125,42 @@ class Credit(db.Model):
     created_at = db.Column(db.Date, default=date.today)
     
     
+    # @property
+    # def total_payable(self):
+    #     rate = self.interest_rate or 0
+    #     return self.amount_requested + (
+    #         self.amount_requested * rate / 100
+    #     )
     @property
     def total_payable(self):
-        rate = self.interest_rate or 0
-        return self.amount_requested + (
-            self.amount_requested * rate / 100
-        )
+        return round(self.amount_requested + self.interest_amount, 2)
 
     @property
     def remaining_balance(self):
         paid = self.amount_paid or 0
         return max(self.total_payable - paid, 0)
     
+ 
     @property
     def interest_amount(self):
         rate = self.interest_rate or 0
-        return self.amount_requested * rate / 100
+        months = self.installments or 0
+
+        if getattr(self, "interest_method", "straight Line") == "straight":
+            # Simple interest: principal * rate * months / 12
+            return round(self.amount_requested * rate / 100 * months / 12, 2)
+        elif self.interest_method == "amortized":
+            # Amortized interest = total_payable - principal
+            n = months
+            r = rate / 100 / 12  # monthly rate
+            if r == 0:
+                monthly_payment = self.amount_requested / n
+            else:
+                monthly_payment = self.amount_requested * (r * (1 + r) ** n) / ((1 + r) ** n - 1)
+            total = monthly_payment * n
+            return round(total - self.amount_requested, 2)
+        else:
+            raise ValueError("Invalid interest method")
     
     @property
     def expected_completion_date(self):
@@ -149,6 +177,7 @@ class Credit(db.Model):
             "loanId": self.loan_id,
             "memberId": self.member_id,
             "memberName": self.member.name if self.member else "",
+            "memberPhone": self.member.phone if self.member else "",
             "amountRequested": self.amount_requested,
             "interestRate": self.interest_rate,
             "interestAmount": round(self.interest_amount, 2),
@@ -178,6 +207,11 @@ class CreditRepayment(db.Model):
     paid_at = db.Column(db.Date, nullable=True)
     amount_paid = db.Column(db.Float, nullable=False, default=0)
     remaining_balance = db.Column(db.Float, nullable=False)
+    interest_paid = db.Column(db.Float, default=0)
+    principal_paid = db.Column(db.Float, default=0)
+    penalty = db.Column(db.Numeric(10, 2), default=0)
+    penalty_paid = db.Column(db.Numeric(10, 2), default=0)
+    penalty_applied_at = db.Column(db.Date)
     
     def to_dict(self):
         remaining = max(self.total - (self.amount_paid or 0), 0)
@@ -193,7 +227,71 @@ class CreditRepayment(db.Model):
             "paid_at": self.paid_at.isoformat() if self.paid_at else None,
             "amount_paid": self.amount_paid,
             "remaining_balance": remaining,
+            "interest_paid":self.interest_paid,
         }
-
         
+        
+class Vendor(db.Model):
+    __tablename__ = "vendors"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    vendor_id = db.Column(db.String(20), unique=True, nullable=False)  # optional code
+    name = db.Column(db.String(100), nullable=False)
+    default_monthly_amount = db.Column(db.Float, nullable=False, default=0)
+    phone = db.Column(db.String(100), nullable=True)
 
+    # Relationship: Ledger entries
+    ledger_entries = db.relationship("VendorLedger", backref="vendor", lazy=True)
+
+class VendorLedger(db.Model):
+    __tablename__ = "vendor_ledger"
+
+    id = db.Column(db.Integer, primary_key=True)
+    vendor_id = db.Column(db.Integer, db.ForeignKey("vendors.id"), nullable=False)
+    month = db.Column(db.Date, nullable=False)
+    expected_amount = db.Column(db.Float, nullable=False, default=0)
+    amount_received = db.Column(db.Float, nullable=False, default=0)
+    outstanding_amount = db.Column(db.Float, nullable=False, default=0)
+    received_amount = db.Column(db.Float, nullable=False, default=0)
+    
+    
+class MpesaTransaction(db.Model):
+    __tablename__ = "mpesa_transactions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    amount = db.Column(db.Float, nullable=False)
+    receipt = db.Column(db.String(50), unique=True, nullable=False)
+    phone = db.Column(db.String(20), nullable=False)
+    posted = db.Column(db.Boolean, default=False)
+    month = db.Column(db.String(7))
+    transaction_date = db.Column(db.String(10), default=datetime.today().strftime('%d/%m/%Y'))
+    member_name = db.Column(db.String(100), nullable=False)
+    Memberid = db.Column(db.String(8),  nullable=False)
+    trans_time = db.Column(db.String(20), nullable=False)  # YYYYMMDDHHMMSS
+    loanno = db.Column(db.String(20), nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "amount": self.amount,
+            "receipt": self.receipt,
+            "phone": self.phone,
+            "trans_time": self.trans_time,
+            "created_at": self.created_at.isoformat() if self.created_at else None
+        }
+        
+class MCashRecords(db.Model):
+    __tablename__ = "mcash_records"
+    id = db.Column(db.Integer, primary_key=True)
+    member_id = db.Column(db.Integer, nullable=False)
+    month = db.Column(db.String(7)) 
+    transaction_date = db.Column(db.String(10), default=datetime.today().strftime('%d/%m/%Y'))
+    code = db.Column(db.String(20), nullable=False)
+    received_amount = db.Column(db.Float, nullable=False, default=0)
+    posted = db.Column(db.Boolean, default=False)
+    phone = db.Column(db.String(20), nullable=False)
+    loanno = db.Column(db.String(20), nullable=True)
+    installment = db.Column(db.Integer, nullable=True)
+    
