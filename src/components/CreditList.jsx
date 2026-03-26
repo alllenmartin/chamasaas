@@ -6,7 +6,7 @@ import "./MemberCredit.css";
 
 const CreditList = () => {
   const [loans, setLoans] = useState([]);
-  const [activeTab, setActiveTab] = useState("Active");
+  const [activeTab, setActiveTab] = useState("Pending");
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -74,6 +74,14 @@ const CreditList = () => {
     alert(`Edit loan ${loan.loanId}`);
   };
 
+  const loanCounts = {
+  Pending: loans.filter((l) => l.status === "Pending").length,
+  Active: loans.filter((l) => l.status === "Active").length,
+  Completed: loans.filter((l) => l.status === "Completed").length,
+  Rejected: loans.filter((l) => l.status === "Rejected").length,
+  Defaulted: loans.filter((l) => l.status === "Defaulted").length,
+};
+
   return (
     <div className="dashboard">
       <Sidebar active="Credit" />
@@ -82,19 +90,17 @@ const CreditList = () => {
         <h1>Credit / Loan List</h1>
 
         {/* Tabs */}
-        <div className="loan-tabs">
-          {["Pending", "Active", "Completed", "Rejected", "Defaulted"].map(
-            (tab) => (
-              <button
-                key={tab}
-                className={`tab-btn ${activeTab === tab ? "active" : ""}`}
-                onClick={() => setActiveTab(tab)}
-              >
-                {tab}
-              </button>
-            )
-          )}
-        </div>
+       <div className="loan-tabs">
+  {["Pending", "Active", "Completed", "Rejected", "Defaulted"].map((tab) => (
+    <button
+      key={tab}
+      className={`tab-btn ${activeTab === tab ? "active" : ""}`}
+      onClick={() => setActiveTab(tab)}
+    >
+      {tab} ({loanCounts[tab]})
+    </button>
+  ))}
+</div>
 
         {/* Search */}
         <input

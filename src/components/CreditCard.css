@@ -1,52 +1,77 @@
-.credit-card {
-  max-width: 550px;
-  margin: 40px auto;
-  padding: 30px;
-  background: linear-gradient(145deg, #fefefe, #f4f4f4);
-  border-radius: 15px;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+/* =========================
+   Page Container
+========================= */
+.credit-card-page {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  padding: 20px 40px;
+  max-width: 1200px;
+  margin: auto;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: #333;
+}
+
+/* =========================
+   Loan / Card Styling
+========================= */
+.credit-card, 
+.schedule-card {
+  padding: 25px 30px;
+  background: linear-gradient(145deg, #fff, #f9f9f9);
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .credit-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.12);
 }
 
 .credit-card h2 {
   text-align: center;
-  margin-bottom: 25px;
+  margin-bottom: 20px;
   color: #1e3a8a;
-  font-size: 24px;
+  font-size: 22px;
   letter-spacing: 0.5px;
 }
 
-.credit-card .card-row {
+/* -------------------------
+   Card Rows
+------------------------- */
+.card-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 10px 0;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-.credit-card .card-row:last-child {
+.card-row:last-child {
   border-bottom: none;
 }
 
-.credit-card .card-row strong {
-  color: #1f2937;
+.card-row strong {
+  color: #111827;
 }
 
-.credit-card .remaining {
-  color: #dc2626;
-  font-weight: bold;
-  font-size: 1.1em;
+.card-row span {
+  color: #374151;
+}
+
+/* -------------------------
+   Status Selector
+------------------------- */
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 15px;
 }
 
 .credit-card select {
-  padding: 6px 10px;
+  padding: 6px 12px;
   border-radius: 6px;
   border: 1px solid #cbd5e1;
   background: #f8fafc;
@@ -61,48 +86,133 @@
   cursor: not-allowed;
 }
 
-.credit-card button {
+/* -------------------------
+   Card Actions / Buttons
+------------------------- */
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-top: 20px;
-  width: 100%;
-  padding: 12px;
-  border: none;
-  border-radius: 8px;
-  background: #2c3e50;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.btn-primary {
+  background-color: #1e40af;
   color: #fff;
-  font-size: 16px;
-  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 6px;
+  border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  font-weight: 600;
+  font-size: 15px;
+  transition: background 0.2s ease;
 }
 
-.credit-card button:hover {
-  background: #1e40af;
+.btn-primary:hover {
+  background-color: #1e3a8a;
 }
 
-.credit-card button:disabled {
-  background: #93c5fd;
+.btn-primary:disabled {
+  background-color: #a5b4fc;
   cursor: not-allowed;
 }
 
-/* =========================
-   Repayment Schedule
-========================= */
+.btn-secondary {
+  background-color: #111827;
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15px;
+  transition: background 0.2s ease;
+}
 
+.btn-secondary:hover {
+  background-color: #1f2937;
+}
+
+/* Smaller Re-generate Schedule button */
+.btn-regenerate {
+  background-color: #f3f4f6;
+  color: #1e3a8a;
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-regenerate:hover {
+  background-color: #e0e7ff;
+}
+
+/* -------------------------
+   Interest Method
+------------------------- */
+.interest-method {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.interest-method select {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+/* =========================
+   Schedule Card / Loan Calculator
+========================= */
 .schedule-card {
-  margin-top: 30px;
   padding: 20px;
   background: #f8fafc;
   border-radius: 12px;
   box-shadow: inset 0 0 0 1px #e5e7eb;
 }
 
-.schedule-card h3 {
-  margin-bottom: 15px;
-  color: #1e3a8a;
-  font-size: 18px;
-  text-align: center;
+/* -------------------------
+   Loan Calculator Table
+------------------------- */
+.table-wrapper {
+  overflow-x: auto;
 }
 
+.table-wrapper table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 700px;
+}
+
+.table-wrapper th, 
+.table-wrapper td {
+  padding: 10px 12px;
+  text-align: center;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.table-wrapper th {
+  background-color: #e5e7eb;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.table-wrapper td {
+  color: #374151;
+}
+
+/* =========================
+   Schedule Items (Card-style)
+========================= */
 .schedule-item {
   display: grid;
   grid-template-columns: 40px 1fr;
@@ -118,7 +228,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #2c3e50;
+  background: #1e3a8a;
   color: white;
   display: flex;
   align-items: center;
@@ -134,35 +244,9 @@
   font-size: 14px;
 }
 
-.schedule-details span {
-  color: #374151;
-}
-
-.schedule-details strong {
-  color: #111827;
-}
-
-.amount {
-  font-weight: 600;
-}
-
-.amount.principal {
-  color: #0f766e;
-}
-
-.amount.interest {
-  color: #b45309;
-}
-
-.amount.total {
-  color: #1e40af;
-}
-
-.amount.remaining {
-  color: #dc2626;
-}
-
-/* Partial Payment Container */
+/* =========================
+   Partial Payment
+========================= */
 .partial-payment {
   display: flex;
   align-items: center;
@@ -170,7 +254,6 @@
   margin-top: 8px;
 }
 
-/* Partial Payment Input */
 .partial-payment input {
   width: 140px;
   padding: 6px 8px;
@@ -179,10 +262,9 @@
   font-size: 14px;
 }
 
-/* Partial Payment Button */
 .partial-payment button {
   padding: 6px 12px;
-  background-color: #2c3e50;
+  background-color: #1e3a8a;
   color: #fff;
   border: none;
   border-radius: 4px;
@@ -192,9 +274,82 @@
 }
 
 .partial-payment button:hover {
-  background-color: #2c3e50;
+  background-color: #3743ac;
 }
 
+/* =========================
+   Floating Loan Status Badge
+========================= */
+.credit-card {
+  position: relative;
+}
 
+.loan-status-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  z-index: 10;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
 
+.loan-status-badge.pending { background-color: #f59e0b; }
+.loan-status-badge.active { background-color: #10b981; }
+.loan-status-badge.completed { background-color: #3b82f6; }
 
+/* =========================
+   Responsive Tables & Card Actions
+========================= */
+@media (max-width: 768px) {
+  .table-wrapper table, .table-wrapper thead, .table-wrapper tbody,
+  .table-wrapper th, .table-wrapper td, .table-wrapper tr {
+    display: block;
+  }
+
+  .table-wrapper thead tr {
+    display: none;
+  }
+
+  .table-wrapper tbody tr {
+    margin-bottom: 15px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    padding: 10px;
+  }
+
+  .table-wrapper td {
+    text-align: right;
+    padding-left: 50%;
+    position: relative;
+    white-space: normal;
+  }
+
+  .table-wrapper td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 12px;
+    top: 10px;
+    font-weight: 600;
+    color: #1e3a8a;
+    text-align: left;
+  }
+
+  .card-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-regenerate {
+    width: 100%;
+    text-align: center;
+  }
+}

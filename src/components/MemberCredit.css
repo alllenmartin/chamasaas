@@ -38,6 +38,42 @@
   color: #111;
 }
 
+.inline-input {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.tag-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 6px;
+}
+
+.tag-list li {
+  display: inline-block;
+  background: #f1f1f1;
+  padding: 6px 10px;
+  border-radius: 16px;
+  margin: 4px;
+  font-size: 13px;
+}
+.credit-action{
+  display:flex;
+  gap:12px;
+  margin-top:15px;
+}
+
+.credit-action .view-btn{
+  padding:8px 14px;
+}
+
+.tag-list li span {
+  margin-left: 8px;
+  cursor: pointer;
+  color: #e74c3c;
+}
+
 /* Highlight amount */
 .credit-highlight {
   margin: 18px 0;

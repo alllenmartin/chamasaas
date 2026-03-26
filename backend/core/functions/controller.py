@@ -1,9 +1,15 @@
 
 from flask import Blueprint, jsonify, request,abort
-from .models import CreditStatusEnum, db, ChamaSettings,Member,Contribution,Credit,CreditRepayment,VendorLedger,Vendor
-from datetime import datetime
+from .models import CreditStatusEnum, db, ChamaSettings,Member,Contribution,Credit,CreditRepayment,VendorLedger,Vendor,RepaymentSchedule
+from datetime import datetime,timedelta
 from datetime import date
 import calendar
+import requests
+from .sms import send_sms_to_mobile
+from app import app
+from dateutil.relativedelta import relativedelta
+import math
+
 
 
 def get_settings():
@@ -175,6 +181,8 @@ def generate_loan_id():
 
     last_number = int(last_credit.loan_id.replace("L", ""))
     return f"L{last_number + 1:03d}"
+
+
 
 
 def request_credit():
@@ -707,15 +715,7 @@ def get_vendor_ledger():
 
 
 # vendors
-
 def receive_vendor_payment(id):
-    """
-    Mark an amount as received for a vendor ledger entry
-    Request JSON:
-    {
-        "amount": 100
-    }
-    """
     data = request.get_json() or {}
     amount = data.get("amount")
 
@@ -726,11 +726,22 @@ def receive_vendor_payment(id):
     if not ledger:
         return jsonify({"error": "Ledger entry not found"}), 404
 
-    # Calculate new received and outstanding amounts
+    # Update ledger
     ledger.received_amount += amount
     ledger.outstanding_amount = max(ledger.expected_amount - ledger.received_amount, 0)
-
     db.session.commit()
+
+    # Get vendor phone
+    vendor = ledger.vendor
+
+    if vendor and vendor.phone:
+        message = (
+            f"Payment of KES {amount} received from {vendor.name} "
+            f"for {ledger.month.strftime('%B %Y')}.\n"
+            f"Outstanding: KES {ledger.outstanding_amount}"
+        )
+        send_sms_to_mobile(vendor.phone, message)  # direct call, no HTTP request
+       
 
     return jsonify({
         "id": ledger.id,
@@ -740,6 +751,40 @@ def receive_vendor_payment(id):
         "received_amount": ledger.received_amount,
         "outstanding_amount": ledger.outstanding_amount
     }), 200
+
+
+# def receive_vendor_payment(id):
+#     """
+#     Mark an amount as received for a vendor ledger entry
+#     Request JSON:
+#     {
+#         "amount": 100
+#     }
+#     """
+#     data = request.get_json() or {}
+#     amount = data.get("amount")
+
+#     if amount is None or amount <= 0:
+#         return jsonify({"error": "Invalid amount"}), 400
+
+#     ledger = VendorLedger.query.get(id)
+#     if not ledger:
+#         return jsonify({"error": "Ledger entry not found"}), 404
+
+#     # Calculate new received and outstanding amounts
+#     ledger.received_amount += amount
+#     ledger.outstanding_amount = max(ledger.expected_amount - ledger.received_amount, 0)
+
+#     db.session.commit()
+
+#     return jsonify({
+#         "id": ledger.id,
+#         "vendor_id": ledger.vendor_id,
+#         "month": ledger.month.isoformat(),
+#         "expected_amount": ledger.expected_amount,
+#         "received_amount": ledger.received_amount,
+#         "outstanding_amount": ledger.outstanding_amount
+#     }), 200
     
 def get_vendors():
     vendors = Vendor.query.order_by(Vendor.name.asc()).all()
@@ -823,11 +868,132 @@ def delete_vendor(id):
 
     return jsonify({"message": "Vendor deleted successfully"}), 200
 
+def send_sms():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Missing request body"}), 400
+
+    mobile = data.get("mobile")
+    message = data.get("message")
+
+    result = send_sms_to_mobile(mobile, message)
+    return jsonify(result)
+
+def member_lookup():
+    members = Member.query.order_by(Member.name.asc()).all()
+    return jsonify([m.to_dict() for m in members])
+
+def get_contributions_each(member_id):
+    contributions = Contribution.query.filter_by(memberId=member_id).all()
+    return jsonify([c.to_dict() for c in contributions])
 
 
+def new_generate_schedule():
+    data = request.json
 
+    principal = float(data["principal"])
+    annual_rate = float(data["annual_rate"])
+    months = int(data["months"])
+    start_date = datetime.strptime(data["start_date"], "%Y-%m-%d")
 
+    monthly_rate = annual_rate / 100 / 12
 
+    # EMI Formula
+    emi = (principal * monthly_rate) / (1 - math.pow(1 + monthly_rate, -months))
+    emi = round(emi, 2)
 
+    balance = principal
+    schedule = []
 
+    for month in range(1, months + 1):
+        interest = round(balance * monthly_rate, 2)
+        principal_paid = round(emi - interest, 2)
 
+        # Adjust final payment
+        if month == months:
+            principal_paid = round(balance, 2)
+            emi = round(principal_paid + interest, 2)
+
+        closing_balance = round(balance - principal_paid, 2)
+
+        payment_date = start_date + relativedelta(months=month)
+
+        schedule.append({
+            "month": month,
+            "payment_date": payment_date.strftime("%Y-%m-%d"),
+            "opening_balance": round(balance, 2),
+            "interest": interest,
+            "principal_paid": principal_paid,
+            "emi": emi,
+            "closing_balance": closing_balance
+        })
+
+        balance = closing_balance
+
+    return jsonify({
+        "emi": emi,
+        "schedule": schedule
+    })
+
+def save_schedule(loan_id):
+    loan = loan.query.filter_by(loanId=loan_id).first()
+
+    if not loan:
+        return jsonify({"error": "Loan not found"}), 404
+
+    loan_data = {
+        "amountRequested": loan.amountRequested,
+        "interestRate": loan.interestRate,
+        "installments": loan.installments
+    }
+
+    schedule = generate_schedule(loan_data)
+
+    for row in schedule:
+        entry = RepaymentSchedule(
+            loan_id=loan_id,
+            installment_number=row["installment_number"],
+            due_date=row["due_date"],
+            principal=row["principal"],
+            interest=row["interest"],
+            total_payment=row["total_payment"],
+            balance=row["balance"]
+        )
+        db.session.add(entry)
+
+    db.session.commit()
+
+    return jsonify({"message": "Schedule saved successfully"})
+
+def generate_schedule(loan):
+    if not isinstance(loan, dict):
+        raise ValueError(f"Expected dict but got {type(loan)}")
+
+    schedule = []  # ✅ FIX
+
+    P = float(loan.get("amountRequested", 0))
+    r = float(loan.get("interestRate", 0)) / 100 / 12
+    n = int(loan.get("installments", 1))
+
+    if r == 0:
+        monthly_payment = P / n
+    else:
+        monthly_payment = (P * r) / (1 - (1 + r) ** -n)
+
+    balance = P
+
+    for i in range(1, n + 1):
+        interest = balance * r
+        principal = monthly_payment - interest
+        balance -= principal
+
+        schedule.append({
+            "installment_number": i,
+            "due_date": datetime.today().date() + timedelta(days=30 * i),
+            "principal": round(principal, 2),
+            "interest": round(interest, 2),
+            "total_payment": round(monthly_payment, 2),
+            "balance": round(balance if balance > 0 else 0, 2)
+        })
+
+    return schedule

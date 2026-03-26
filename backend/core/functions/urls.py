@@ -2,8 +2,8 @@
 from flask import request
 from flask_cors import cross_origin
 from app import app
-from .controller import get_settings,update_settings,add_member,get_members,update_member,delete_member,get_contributions,add_contribution,request_credit,get_credits,credit_members,update_credit_status,get_credit,generate_schedule,get_schedule,mark_paid,get_vendor_ledger,receive_vendor_payment,get_vendors,create_vendor,delete_vendor,update_vendor,get_contributions_monthly,get_repayment_schedule
-from .mpesa_flow import get_mpesa_transactions,initiate_MPESA_push,initiate_mcash
+from .controller import save_schedule,new_generate_schedule,get_contributions_each,member_lookup,get_settings,send_sms,update_settings,add_member,get_members,update_member,delete_member,get_contributions,add_contribution,request_credit,get_credits,credit_members,update_credit_status,get_credit,generate_schedule,get_schedule,mark_paid,get_vendor_ledger,receive_vendor_payment,get_vendors,create_vendor,delete_vendor,update_vendor,get_contributions_monthly,get_repayment_schedule
+from .mpesa_flow import get_mpesa_transactions,initiate_MPESA_push
 
 @app.route("/api/settings", methods=['GET','POST'])
 @cross_origin()
@@ -26,11 +26,30 @@ def updatemembers(member_id):
     if request.method == 'DELETE': return delete_member(member_id)
     else: return 'Method is Not Allowed'
     
+@app.route("/members/lookup", methods=["GET"])
+@cross_origin()
+def get_member_lookup():
+    if request.method == 'GET': return member_lookup()
+    else: return 'Method is Not Allowed'
+    
+@app.route("/api/contributions/<member_id>", methods=["GET"])
+@cross_origin()
+def getontributions(member_id):
+    if request.method == 'GET': return get_contributions_each(member_id)
+    else: return 'Method is Not Allowed'
+    
+    
 @app.route("/api/contributions", methods=['GET','POST'])
 @cross_origin()
 def contrbss():
     if request.method == 'GET': return get_contributions()
     if request.method == 'POST': return add_contribution()
+    else: return 'Method is Not Allowed'
+    
+@app.route("/api/generate-schedule", methods=["POST"])
+@cross_origin()
+def generateschedule():
+    if request.method == 'POST': return new_generate_schedule()
     else: return 'Method is Not Allowed'
     
 @app.route("/api/contributionsbymonth", methods=['GET'])
@@ -116,11 +135,34 @@ def initiate_transaction():
     if request.method == 'POST': return initiate_MPESA_push()
     else: return 'Method is Not Allowed'
     
-@app.route("/api/mcash", methods=['GET','POST'])
+    
+# @app.route("/api/mcash", methods=['GET','POST'])
+# @cross_origin()
+# def mcs():
+#     if request.method == 'POST': return dummy()
+#     else: return 'Method is Not Allowed'
+    
+    
+    
+# SMS
+@app.route("/send-sms", methods=["POST"])
 @cross_origin()
-def mcash_init():
-    # if request.method == 'GET': return get_mpesa_transactions()
-    if request.method == 'POST': return initiate_mcash()
+def send_sms_notification():
+    if request.method == 'POST': return send_sms()
     else: return 'Method is Not Allowed'
+    
+# @app.route("/api/mcash", methods=['GET','POST'])
+# @cross_origin()
+# def mcash_init():
+    # if request.method == 'GET': return get_mpesa_transactions()
+    # if request.method == 'POST': return initiate_mcash()
+    # else: return 'Method is Not Allowed'
+
 
     
+@app.route("/api/credit/<loan_id>/schedule", methods=["POST"])
+@cross_origin()
+def save_loan_schedule(loan_id):
+    if request.method == 'POST': return save_schedule(loan_id)
+    # if request.method == 'POST': return add_member()
+    else: return 'Method is Not Allowed'

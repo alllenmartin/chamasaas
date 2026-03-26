@@ -1,0 +1,201 @@
+/* Horizontal Wizard */
+.wizard-progress{
+  position:relative;
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:40px;
+}
+.progress-line{
+  position:absolute;
+  top:18px;
+  left:0;
+  height:4px;
+  background:#2c3e50;
+  z-index:1;
+  transition:0.3s;
+}
+.wizard-step{
+  text-align:center;
+  flex:1;
+  position:relative;
+  z-index:2;
+  cursor:pointer;
+}
+.step-circle{
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  background:#ddd;
+  margin:auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+}
+.step-title{
+  margin-top:6px;
+  font-size:13px;
+}
+.wizard-step.active .step-circle{
+  background:#2c3e50;
+  color:white;
+}
+.check{ font-size:16px; }
+
+/* Form */
+.form-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:15px;
+  margin-top:20px;
+}
+.photo-upload{ grid-column: span 2; text-align:center; margin-bottom:10px; }
+.photo-circle{ width:120px; height:120px; border-radius:50%; background:#eee; display:flex; align-items:center; justify-content:center; }
+.photo-preview{ width:120px; height:120px; border-radius:50%; object-fit:cover; }
+
+/* Next of Kin */
+.kin-card{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr auto;
+  gap:10px;
+  margin-bottom:10px;
+}
+.add-kin{ background:#1976d2; color:white; margin-top:10px; padding:8px 12px; border:none; border-radius:4px; cursor:pointer; }
+.remove-kin{ background:#d32f2f; color:white; padding:8px 12px; border:none; border-radius:4px; cursor:pointer; }
+
+/* Review Box */
+.review-box{
+  background:#f5f5f5;
+  padding:20px;
+  border-radius:8px;
+  max-height:400px;
+  overflow:auto;
+}
+
+/* Navigation Buttons */
+.wizard-buttons{
+  margin-top:30px;
+  display:flex;
+  justify-content:space-between;
+}
+button{ padding:10px 20px; border:none; border-radius:6px; cursor:pointer; }
+.next-btn{ background:#2c3e50; color:white; }
+.prev-btn{ background:#777; color:white; }
+.save-btn{ background:#2c3e50; color:white; }
+
+.beneficiary-card-vertical{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding:15px;
+  border:1px solid #ddd;
+  border-radius:6px;
+  margin-bottom:15px;
+  background:#fafafa;
+}
+.add-kin{
+  background:#1976d2;
+  color:white;
+  margin-top:10px;
+  padding:8px 12px;
+  border:none;
+  border-radius:4px;
+  cursor:pointer;
+}
+.remove-kin{
+  background:#d32f2f;
+  color:white;
+  padding:8px 12px;
+  border:none;
+  border-radius:4px;
+  align-self:flex-end;
+  cursor:pointer;
+}
+
+/* ================== Member Review CSS ================== */
+
+.review-box {
+  background: #f8f9fa; /* light grey background */
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  max-width: 900px;
+  margin: 20px auto;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.review-box h4 {
+  margin-top: 20px;
+  color: #343a40;
+  border-bottom: 2px solid #6c757d;
+  padding-bottom: 5px;
+}
+
+.review-field {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px dashed #dee2e6;
+}
+
+.review-field:last-child {
+  border-bottom: none;
+}
+
+.review-field strong {
+  color: #495057;
+}
+
+.beneficiary-card-review {
+  background: #fff;
+  padding: 12px 16px;
+  margin: 10px 0;
+  border-radius: 8px;
+  border-left: 4px solid #0d6efd;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.beneficiary-card-review:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+}
+
+.beneficiary-card-review p {
+  margin: 4px 0;
+  color: #495057;
+}
+
+.review-buttons {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.review-buttons button {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+.review-buttons .prev-btn {
+  background: #6c757d;
+  color: #fff;
+}
+
+.review-buttons .prev-btn:hover {
+  background: #5a6268;
+}
+
+.review-buttons .save-btn {
+  background: #2c3e50;
+  color: #fff;
+}
+
+.review-buttons .save-btn:hover {
+  background: #0b5ed7;
+}

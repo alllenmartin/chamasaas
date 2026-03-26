@@ -12,7 +12,7 @@ from core.accounts import urls
 
 @app.route('/')
 def hello():
-    return "Hello World!"
+    return "Hello Worvvvld!"
 
 if __name__ == "__main__":
     app.run()

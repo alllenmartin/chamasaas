@@ -1,65 +1,251 @@
-/* =========================
-   Main Content
-========================= */
+/* =========================================================
+   THEME VARIABLES (LIGHT / DARK)
+========================================================= */
+
+:root {
+  --bg: #f9fafb;
+  --card: #ffffff;
+  --border: #d1d5db;
+  --text: #1f2937;
+  --muted: #6b7280;
+
+  --primary: #2c3e50;
+  --primary-hover: #1d4ed8;
+
+  --edit: #4a7bd0;
+  --edit-hover: #3563b5;
+
+  --danger: #e5533d;
+  --danger-hover: #c4412d;
+
+  --success-bg: #e6f7ed;
+  --success-text: #1f9d55;
+
+  --error-bg: #fdecea;
+  --error-text: #e3342f;
+}
+
+[data-theme="dark"] {
+  --bg: #0f172a;
+  --card: #111827;
+  --border: #374151;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+
+  --primary: #1f2937;
+  --primary-hover: #2563eb;
+}
+
+/* =========================================================
+   BASE
+========================================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+/* =========================================================
+   MAIN CONTENT
+========================================================= */
 
 .main-content {
   padding: 24px;
-  background-color: #f9fafb;
   min-height: 100vh;
 }
 
 .main-content h1 {
   margin-bottom: 20px;
   font-size: 28px;
-  color: #1f2937;
+  font-weight: 700;
 }
 
-/* =========================
-   Inputs & Selects
-========================= */
+/* =========================================================
+   INPUTS & SELECTS (SINGLE SOURCE)
+========================================================= */
 
-.main-content input[type="text"],
-.main-content input[type="number"],
-.main-content select {
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  padding: 6px 8px;
+input,
+select {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
   font-size: 14px;
+}
+
+input:focus,
+select:focus {
   outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(44, 62, 80, 0.15);
 }
 
-.main-content input:focus,
-.main-content select:focus {
-  border-color: #2c3e50;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+input:disabled {
+  background: #e5e7eb;
 }
 
-/* =========================
-   Buttons
-========================= */
+/* =========================================================
+   BUTTONS
+========================================================= */
 
 button {
-  background-color: #2c3e50;
+  background-color: var(--primary);
   color: white;
   border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
+  padding: 8px 14px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
+  transition: background 0.2s ease, transform 0.1s ease;
 }
 
 button:hover {
+  background-color: var(--primary-hover);
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+.edit-btn {
+  background-color: var(--edit);
+}
+
+.edit-btn:hover {
+  background-color: var(--edit-hover);
+}
+
+.remove-btn {
+  background-color: var(--danger);
+}
+
+.remove-btn:hover {
+  background-color: var(--danger-hover);
+}
+
+/* =========================================================
+   FORM CONTAINER
+========================================================= */
+
+.add-member-form {
+  background: var(--card);
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  margin-bottom: 24px;
+}
+
+/* =========================================================
+   TABS (DESKTOP)
+========================================================= */
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.tabs button {
+  background: #f3f4f6;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 8px 14px;
+}
+
+.tabs button.active-tab {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* =========================================================
+   TAB CONTENT (ANIMATED)
+========================================================= */
+
+.tab-content {
+  background: #fafafa;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  animation: tabFade 0.25s ease;
+}
+
+/* Section title inside tabs */
+.tab-content::before {
+  content: attr(data-title);
+  grid-column: 1 / -1;
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+
+/* Animation */
+@keyframes tabFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================================================
+   NEXT OF KIN
+========================================================= */
+
+/* =========================
+   Add Next of Kin Button
+========================= */
+.add-next-kin-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  background-color: #1f2937; /* primary color */
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  align-self: flex-start; /* keep it aligned to left */
+  margin-top: 4px;
+}
+
+.add-next-kin-btn:hover {
   background-color: #1d4ed8;
 }
 
-.view-btn {
-  padding: 4px 10px;
-  font-size: 13px;
+.next-of-kin-entry {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
 }
 
-/* =========================
-   Members Table (REAL TABLE)
-========================= */
+.next-of-kin-entry button {
+  grid-column: 1 / -1;
+  justify-self: flex-end;
+}
+
+/* =========================================================
+   MEMBERS TABLE
+========================================================= */
 
 .members-table {
   width: 100%;
@@ -68,16 +254,16 @@ button:hover {
 }
 
 .members-table thead th {
-  text-align: left;
   padding: 12px;
-  background: #f8f9fb;
+  background: #f3f4f6;
+  color: var(--text);
   font-weight: 600;
-  color: #374151;
+  text-align: left;
 }
 
 .members-table tbody tr {
-  background: #ffffff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  background: var(--card);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
 }
 
 .members-table tbody td {
@@ -94,30 +280,30 @@ button:hover {
   border-bottom-right-radius: 8px;
 }
 
-/* =========================
-   Status Badge
-========================= */
+/* =========================================================
+   BADGES
+========================================================= */
 
 .badge {
   padding: 4px 10px;
   border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: bold;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .badge.paid {
-  background: #e6f7ed;
-  color: #1f9d55;
+  background: var(--success-bg);
+  color: var(--success-text);
 }
 
 .badge.unpaid {
-  background: #fdecea;
-  color: #e3342f;
+  background: var(--error-bg);
+  color: var(--error-text);
 }
 
-/* =========================
-   Eligibility
-========================= */
+/* =========================================================
+   ELIGIBILITY
+========================================================= */
 
 .eligible {
   color: #16a34a;
@@ -129,34 +315,9 @@ button:hover {
   font-weight: bold;
 }
 
-/* =========================
-   Actions
-========================= */
-
-.actions {
-  display: flex;
-  gap: 8px;
-}
-
-.edit-btn {
-  background: #4a7bd0;
-  color: white;
-  border: none;
-  padding: 6px 10px;
-  border-radius: 6px;
-}
-
-.remove-btn {
-  background: #e5533d;
-  color: white;
-  border: none;
-  padding: 6px 10px;
-  border-radius: 6px;
-}
-
-/* =========================
-   Modal
-========================= */
+/* =========================================================
+   MODAL
+========================================================= */
 
 .modal-backdrop {
   position: fixed;
@@ -169,30 +330,92 @@ button:hover {
 }
 
 .modal {
-  background: #ffffff;
+  background: var(--card);
   width: 420px;
   max-width: 90%;
   padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
 }
 
-.modal h3 {
-  margin-bottom: 16px;
+/* =========================================================
+   MOBILE: TABS → ACCORDION
+========================================================= */
+
+@media (max-width: 768px) {
+  .tabs {
+    display: none;
+  }
+
+  .tab-content {
+    grid-template-columns: 1fr;
+  }
+
+  .accordion {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+
+  .accordion-header {
+    padding: 12px;
+    background: #f3f4f6;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .accordion-body {
+    padding: 14px;
+    animation: tabFade 0.25s ease;
+  }
 }
 
-.modal input,
-.modal select {
+.add-member-form {
+  border: 1px solid #ccc;
+  padding: 20px;
+  border-radius: 10px;
+  background: #f9f9f9;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.add-member-form input,
+.add-member-form select {
+  display: block;
   width: 100%;
   padding: 8px;
-  margin-bottom: 10px;
+  margin: 8px 0;
   border-radius: 6px;
-  border: 1px solid #dcdde1;
+  border: 1px solid #ccc;
 }
 
-.modal-actions {
+.step-navigation button {
+  margin-right: 10px;
+  padding: 8px 16px;
+  border: none;
+  background-color: #4caf50;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.step-navigation button:hover {
+  background-color: #45a049;
+}
+
+.progress-bar {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.progress-step {
+  flex: 1;
+  height: 8px;
+  background: #ddd;
+  border-radius: 4px;
+  transition: background 0.3s;
+}
+
+.progress-step.active {
+  background: #4caf50;
 }

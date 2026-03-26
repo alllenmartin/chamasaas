@@ -121,7 +121,10 @@ const Settings = () => {
 
     setLoading(true);
     try {
+      console.log(settings)
+    
       const res = await fetch("http://127.0.0.1:5000/api/settings", {
+      
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),

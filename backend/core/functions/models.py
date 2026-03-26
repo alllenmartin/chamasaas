@@ -260,17 +260,25 @@ class MpesaTransaction(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     amount = db.Column(db.Float, nullable=False)
-    receipt = db.Column(db.String(50), unique=True, nullable=False)
+    receipt = db.Column(db.String(50),nullable=False)
+    reference = db.Column(db.String(100), nullable=False)
+    checkout_request_id = db.Column(db.String(100), unique=True, nullable=True) 
     phone = db.Column(db.String(20), nullable=False)
-    posted = db.Column(db.Boolean, default=False)
-    month = db.Column(db.String(7))
-    transaction_date = db.Column(db.String(10), default=datetime.today().strftime('%d/%m/%Y'))
-    member_name = db.Column(db.String(100), nullable=False)
-    Memberid = db.Column(db.String(8),  nullable=False)
-    trans_time = db.Column(db.String(20), nullable=False)  # YYYYMMDDHHMMSS
-    loanno = db.Column(db.String(20), nullable=True)
-    created_at = db.Column(db.DateTime, server_default=db.func.now())
-    
+    trans_time = db.Column(db.DateTime, default=datetime.utcnow)  # YYYYMMDDHHMMSS
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(
+        db.Enum("pending", "success", "failed", name="mpesa_status"),
+        default="pending"
+    )
+    transaction_type = db.Column(
+    db.Enum(
+        "registration_fee",
+        "shares_contribution",
+        "penalty_due",
+        "loan_repayment",
+        name="transaction_type"
+    ),
+    default="shares_contribution")
     
     def to_dict(self):
         return {
@@ -281,17 +289,18 @@ class MpesaTransaction(db.Model):
             "trans_time": self.trans_time,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
-        
-class MCashRecords(db.Model):
-    __tablename__ = "mcash_records"
-    id = db.Column(db.Integer, primary_key=True)
-    member_id = db.Column(db.Integer, nullable=False)
-    month = db.Column(db.String(7)) 
-    transaction_date = db.Column(db.String(10), default=datetime.today().strftime('%d/%m/%Y'))
-    code = db.Column(db.String(20), nullable=False)
-    received_amount = db.Column(db.Float, nullable=False, default=0)
-    posted = db.Column(db.Boolean, default=False)
-    phone = db.Column(db.String(20), nullable=False)
-    loanno = db.Column(db.String(20), nullable=True)
-    installment = db.Column(db.Integer, nullable=True)
     
+        
+
+    
+class RepaymentSchedule(db.Model):
+    __tablename__ = "repayment_schedule"
+
+    id = db.Column(db.Integer, primary_key=True)
+    loan_id = db.Column(db.String(50))
+    installment_number = db.Column(db.Integer)
+    due_date = db.Column(db.Date)
+    principal = db.Column(db.Float)
+    interest = db.Column(db.Float)
+    total_payment = db.Column(db.Float)
+    balance = db.Column(db.Float)

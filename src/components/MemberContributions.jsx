@@ -20,6 +20,8 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 const settings = JSON.parse(localStorage.getItem("chamaSettings")) || {};
 const registrationFee = Number(settings.registrationFee || 0);
 
+
+
 const MemberContributions = () => {
   const [members, setMembers] = useState([]);
   const [contributions, setContributions] = useState([]);
@@ -30,6 +32,29 @@ const MemberContributions = () => {
   const [loading, setLoading] = useState(true);
   const [stkLoading, setStkLoading] = useState(false);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const visibleContributions = viewAll
+    ? contributions
+    : contributions.filter((c) => c.memberId === selectedMemberId);
+
+  // ✅ PAGINATION CALCULATIONS MUST COME AFTER visibleContributions
+  const totalPages = Math.ceil(visibleContributions.length / itemsPerPage);
+  const indexOfLast = currentPage * itemsPerPage;
+  const indexOfFirst = indexOfLast - itemsPerPage;
+  const currentContributions = visibleContributions.slice(indexOfFirst, indexOfLast);
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    setCurrentPage(newPage);
+  };
+
+  // Reset page when member/viewAll changes
+// Reset page when member/viewAll changes
+useEffect(() => {
+  setCurrentPage(1);
+}, [selectedMemberId, viewAll]);
   /** Fetch members and contributions from backend */
   useEffect(() => {
     const fetchData = async () => {
@@ -39,7 +64,7 @@ const MemberContributions = () => {
         setMembers(membersData);
 
         const contribRes = await fetch(
-          "http://127.0.0.1:5000/api/contributions"
+          "http://127.0.0.1:5000/api/contributions",
         );
         const contribData = await contribRes.json();
         setContributions(contribData);
@@ -75,13 +100,13 @@ const MemberContributions = () => {
         remainingAmount -= regRemaining;
         registrationPaidAmount = registrationFee;
         toast.success(
-          `Registration fee of KES ${registrationFee.toLocaleString()} has been fully paid.`
+          `Registration fee of KES ${registrationFee.toLocaleString()} has been fully paid.`,
         );
       } else {
         registrationPaidAmount += remainingAmount;
         remainingAmount = 0;
         toast.success(
-          `Partial registration payment of KES ${remainingAmount.toLocaleString()} recorded.`
+          `Partial registration payment of KES ${remainingAmount.toLocaleString()} recorded.`,
         );
       }
     }
@@ -96,8 +121,8 @@ const MemberContributions = () => {
 
       setMembers((prev) =>
         prev.map((m) =>
-          m.id === selectedMemberId ? { ...m, registrationPaidAmount } : m
-        )
+          m.id === selectedMemberId ? { ...m, registrationPaidAmount } : m,
+        ),
       );
     } catch (err) {
       console.error(err);
@@ -132,12 +157,28 @@ const MemberContributions = () => {
     }
   };
 
+  // Polling Payment
+  const checkPaymentStatus = async (checkout_request_id) => {
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:5000/payment_status?checkout_request_id=${checkout_request_id}`,
+      );
+      const data = await res.json();
+      return data.status;
+    } catch (err) {
+      console.error("Failed to check payment status:", err);
+      return "pending";
+    }
+  };
+
+  //End
+
   /* ======================
      FILTERING
   ====================== */
-  const visibleContributions = viewAll
-    ? contributions
-    : contributions.filter((c) => c.memberId === selectedMemberId);
+  // const visibleContributions = viewAll
+  //   ? contributions
+  //   : contributions.filter((c) => c.memberId === selectedMemberId);
 
   /* ======================
      PER-MONTH TOTALS
@@ -160,80 +201,9 @@ const MemberContributions = () => {
 
   const totalCollected = visibleContributions.reduce(
     (sum, c) => sum + c.amount,
-    0
+    0,
   );
 
-  // STK push
-  // STK push
-  // const handleStkPush = async () => {
-  //   if (!selectedMember || amount <= 0 || !month) {
-  //     toast.error("Select member, month and enter amount");
-  //     return;
-  //   }
-
-  //   const payload = {
-  //     phone_number: selectedMember.phone,
-  //     amount: Number(amount),
-  //     // month,
-  //     reference: selectedMember.id,
-  //   };
-
-  //    const mcashpayload = {
-  //     phone_number: selectedMember.phone,
-  //     amount: Number(amount),
-  //     month:month,
-  //     reference: selectedMember.id,
-  //     code: 'CONTRIBUTION',
-  //   };
-
-  //   console.log("STK Push payload:", mcashpayload);
-
-  //    try {
-  //     const res = await fetch("http://127.0.0.1:5000/api/mcash", {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify(mcashpayload),
-  //     });
-
-  //     const data = await res.json();
-
-  //     if (!res.ok) {
-  //       throw new Error(data.message || "Savings failed");
-  //     }
-
-  //     // OPTIONAL: clear inputs
-  //     // setAmount(0);
-  //     // setMonth("");
-
-  //   } catch (err) {
-  //     console.error(err);
-  //     toast.error("Failed to save to mcash");
-  //   }
-
-  //   try {
-  //     const res = await fetch("http://127.0.0.1:5000/api/stk-push", {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify(payload),
-  //     });
-
-  //     const data = await res.json();
-
-  //     if (!res.ok) {
-  //       throw new Error(data.message || "STK Push failed");
-  //     }
-
-  //     toast.success("STK Push sent successfully. Check phone to complete payment.");
-
-  //     // OPTIONAL: clear inputs
-  //     // setAmount(0);
-  //     // setMonth("");
-
-  //   } catch (err) {
-  //     console.error(err);
-  //     toast.error("Failed to send STK Push");
-  //   }
-  // };
 
   const handleStkPush = async () => {
     if (!selectedMember || amount <= 0 || !month) {
@@ -244,36 +214,15 @@ const MemberContributions = () => {
     const payload = {
       phone_number: selectedMember.phone,
       amount: Number(amount),
-      reference: selectedMember.id,
+      reference: selectedMember.id, // 
+      transaction_type: "shares_contribution",
     };
-
-    const mcashpayload = {
-      phone_number: selectedMember.phone,
-      amount: Number(amount),
-      month: month,
-      reference: selectedMember.id,
-      code: "CONTRIBUTION",
-      LoanNo: '',
-    };
-
- 
 
     try {
-      setStkLoading(true); // ⬅ Start loading
+      setStkLoading(true); // start loading
       toast.info(`Sending STK Push to ${selectedMember.phone}...`);
 
-      // Save to mcash first
-      const mcashRes = await fetch("http://127.0.0.1:5000/api/mcash", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(mcashpayload),
-      });
-
-      const mcashData = await mcashRes.json();
-      if (!mcashRes.ok)
-        throw new Error(mcashData.message || "Failed to save to mcash");
-
-      // Send STK Push
+      // 1️⃣ Send STK Push
       const stkRes = await fetch("http://127.0.0.1:5000/api/stk-push", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -283,14 +232,53 @@ const MemberContributions = () => {
       const stkData = await stkRes.json();
       if (!stkRes.ok) throw new Error(stkData.message || "STK Push failed");
 
+      // 2️⃣ Get Safaricom CheckoutRequestID from response
+      const checkoutRequestId = stkData.checkout_request_id;
+      if (!checkoutRequestId) {
+        throw new Error("No CheckoutRequestID returned from backend");
+      }
+
       toast.success(
-        `STK Push sent to ${selectedMember.phone}. Check your phone to complete payment.`
+        `STK Push sent to ${selectedMember.phone}. Check your phone to complete payment.`,
       );
+
+      // 3️⃣ Poll payment status every 3 seconds
+      const interval = setInterval(async () => {
+        try {
+          const statusRes = await fetch(
+            `http://127.0.0.1:5000/payment_status?checkout_request_id=${checkoutRequestId}`,
+          );
+          const data = await statusRes.json();
+          const status = data.status;
+
+          if (status === "success") {
+            clearInterval(interval);
+            toast.success("Payment successful! Contributions updated.");
+
+            // ✅ Refresh contributions
+            const contribRes = await fetch(
+              "http://127.0.0.1:5000/api/contributions",
+            );
+            const contribData = await contribRes.json();
+            setContributions(contribData);
+
+            // Optional: reset amount/month inputs
+            setAmount(0);
+            setMonth("");
+          } else if (status === "failed") {
+            clearInterval(interval);
+            toast.error("Payment failed or cancelled.");
+          }
+          // else pending → keep polling
+        } catch (err) {
+          console.error("Error checking payment status:", err);
+        }
+      }, 3000); // poll every 3s
     } catch (err) {
       console.error(err);
       toast.error(err.message);
     } finally {
-      setStkLoading(false); // ⬅ Stop loading
+      setStkLoading(false); // stop loading
     }
   };
 
@@ -391,25 +379,61 @@ const MemberContributions = () => {
               <th>Date</th>
             </tr>
           </thead>
-          <tbody>
-            {visibleContributions.length > 0 ? (
-              visibleContributions.map((c, index) => (
-                <tr key={index}>
-                  <td>{c.memberName}</td>
-                  <td>{c.month}</td>
-                  <td>KES {c.amount.toLocaleString()}</td>
-                  <td>{c.date}</td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="4" className="no-data">
-                  No contributions found.
-                </td>
-              </tr>
-            )}
-          </tbody>
+        <tbody>
+  {currentContributions.length > 0 ? (
+    currentContributions.map((c, index) => (
+      <tr key={index}>
+        <td>{c.memberName}</td>
+        <td>{c.month}</td>
+        <td>KES {c.amount.toLocaleString()}</td>
+        <td>{c.date}</td>
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td colSpan="4" className="no-data">
+        No contributions found.
+      </td>
+    </tr>
+  )}
+</tbody>
+
         </table>
+       {totalPages > 1 && (
+  <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+    {/* Prev Button */}
+    <button
+      onClick={() => handlePageChange(currentPage - 1)}
+      disabled={currentPage === 1}
+    >
+      Prev
+    </button>
+
+    {/* Page Numbers */}
+    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+      <button
+        key={page}
+        onClick={() => handlePageChange(page)}
+        style={{
+          fontWeight: currentPage === page ? "bold" : "normal",
+          textDecoration: currentPage === page ? "underline" : "none",
+        }}
+      >
+        {page}
+      </button>
+    ))}
+
+    {/* Next Button */}
+    <button
+      onClick={() => handlePageChange(currentPage + 1)}
+      disabled={currentPage === totalPages}
+    >
+      Next
+    </button>
+  </div>
+)}
+
+
 
         <h2 style={{ marginTop: "40px" }}>Monthly Inflow</h2>
         <Bar data={chartData} />

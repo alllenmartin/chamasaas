@@ -1,13 +1,32 @@
-from datetime import datetime
-from flask import request, jsonify
+from flask import request,jsonify
+from datetime import datetime, timedelta
+from .models import db, MpesaTransaction,Member,Contribution
+from app import app
+import requests
 from marshmallow import ValidationError
 from sqlalchemy.exc import IntegrityError
-import requests
-from core import db
-from app import app
 import base64
-from .models import MpesaTransaction,Member,MCashRecords
+from flask_cors import cross_origin
 
+
+def handle_registration_fee(txn, member):
+    """
+    Update member record when registration fee is successfully paid via Mpesa.
+    """
+    try:
+        # 1️⃣ Update member
+        member.registrationPaid = True
+        member.status = "Paid"
+        member.amountPaid += int(txn.amount)  # add to any existing amountPaid
+        db.session.commit()
+
+        print(f"✅ Member {member.name} registration fee marked as paid. Amount: {txn.amount}")
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error updating member registration fee: {e}")
+
+    
+# MPESA Transactions
 def get_mpesa_transactions():
     transactions = MpesaTransaction.query.all()
     return jsonify([o.to_dict() for o in transactions])
@@ -29,31 +48,51 @@ def get_access_token():
         return jsonify({"error": str(e)})
     
 def initiate_MPESA_push():
-     try:
-       request_form = request.form.to_dict()  or request.get_json()
-      
-            
-       try:        
-          res = initiate_stk_push(**request_form)
-          return jsonify({"Message": res}), 200
-       except ValidationError as err:
-         return jsonify(err.messages), 400
-     
+    try:
+        request_form = request.form.to_dict() or request.get_json(silent=True)
+        if not request_form:
+            return jsonify({"error": "No input data provided"}), 400
 
-     except IntegrityError as e:
+        print("Incoming data:", request_form)
+
+        checkout_id = initiate_stk_push(**request_form)
+        print("✅ Payment success:", checkout_id)
+
+        if not checkout_id:
+            return jsonify({"error": "STK push failed"}), 500
+
+        return jsonify({"checkout_request_id": checkout_id}), 200
+
+    except ValidationError as err:
+        return jsonify(err.messages), 400
+
+    except IntegrityError as e:
         return jsonify({"error": str(e)}), 500
-    
-        # Other Role Backs
-    
-     except Exception as e:
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
 
 
-def initiate_stk_push(phone_number, amount, reference):
+def initiate_stk_push(phone_number, amount, reference,transaction_type):
     """Initiate STK push for M-Pesa payment."""
     access_token = get_access_token()
+    print('Reached here')
+    
+    # ✅ CREATE TRANSACTION FIRST
+    txn = MpesaTransaction(
+        reference=reference,
+        receipt= reference,
+        phone=phone_number,
+        amount=amount,
+        transaction_type= transaction_type,
+        status="pending"
+    )
+    db.session.add(txn)
+    db.session.commit()
 
     headers = {
         'Content-Type': 'application/json',
@@ -82,7 +121,7 @@ def initiate_stk_push(phone_number, amount, reference):
         "PartyA": int(phone_number),
         "PartyB": shortcode,
         "PhoneNumber": int(phone_number),
-        "CallBackURL": "https://3fbe066afe3e.ngrok-free.app/mpesa/callback",
+        "CallBackURL": "https://7f40-41-90-172-220.ngrok-free.app/mpesa/callback",
         "AccountReference": reference,
         "TransactionDesc": "Payment of X"
     }
@@ -93,116 +132,130 @@ def initiate_stk_push(phone_number, amount, reference):
         json = payload,
         timeout = 10
         )
+      # 3️⃣ Save CheckoutRequestID sent by Safaricom to DB
+     
+      # ✅ Define resp_json safely
+    try:
+        resp_json = response.json()
+    except Exception:
+        resp_json = {"error": "Failed to parse Safaricom response"}
+         
+    checkout_id = resp_json.get("CheckoutRequestID")
+    if checkout_id:
+        txn.checkout_request_id = checkout_id
+        db.session.commit()
     print(response.text.encode('utf8'))
     
+    return checkout_id
+     # Return only what frontend needs
+    # return jsonify({"CheckoutRequestID": checkout_id}), 200
+    # return response.json()
 
-    return response.json()
 
 
 @app.route("/mpesa/callback", methods=["POST"])
 def mpesa_callback():
     data = request.get_json(force=True)
-    print("📥 M-Pesa Callback received:", data)
+    print("⚡ MPESA Callback Received:", data)
 
-    try:
-        stk_callback = data["Body"]["stkCallback"]
+    stk_callback = data.get("Body", {}).get("stkCallback", {})
+    checkout_id = stk_callback.get("CheckoutRequestID")
+    result_desc = stk_callback.get("ResultDesc")
+    result_code = stk_callback.get("ResultCode")
 
-        result_code = stk_callback["ResultCode"]
-        result_desc = stk_callback["ResultDesc"]
+    if not checkout_id:
+        print("⚠️ No CheckoutRequestID in callback")
+        return jsonify({"ResultCode": 0, "ResultDesc": "OK"})
 
-        if result_code == 0:
-            # Payment was successful
-            metadata = stk_callback.get("CallbackMetadata", {}).get("Item", [])
+    # 1️⃣ Get the transaction
+    txn = MpesaTransaction.query.filter_by(checkout_request_id=checkout_id).first()
+    if not txn:
+        print("⚠️ Transaction not found for CheckoutRequestID:", checkout_id)
+        return jsonify({"ResultCode": 0, "ResultDesc": "OK"})
 
-            amount = next((item["Value"] for item in metadata if item["Name"] == "Amount"), None)
-            receipt = next((item["Value"] for item in metadata if item["Name"] == "MpesaReceiptNumber"), None)
-            phone = next((item["Value"] for item in metadata if item["Name"] == "PhoneNumber"), None)
-            trans_time = next((item["Value"] for item in metadata if item["Name"] == "TransactionDate"), None)
-            
+    # 2️⃣ Process based on result
+    if result_code == 0:
+        # Payment success
+        metadata_items = stk_callback.get("CallbackMetadata", {}).get("Item", [])
 
-            transaction_date,month = parse_mpesa_timestamp(str(trans_time))
-            member = Member.query.filter_by(phone=normalize_phone(phone)).first()
+        txn.amount = next((i["Value"] for i in metadata_items if i["Name"] == "Amount"), txn.amount)
+        txn.receipt = next((i["Value"] for i in metadata_items if i["Name"] == "MpesaReceiptNumber"), txn.receipt)
+        txn.phone = next((i["Value"] for i in metadata_items if i["Name"] == "PhoneNumber"), txn.phone)
+        txn.status = "success"
 
-                        
-            # 👉 Save to database here if needed
-            transaction = MpesaTransaction(
-            amount=amount,
-            receipt=receipt,
-            phone=phone,
-            trans_time=trans_time,
-            month= month,
-            transaction_date= transaction_date,
-            Memberid=member.id,
-            member_name = member.name             
-            )
-            db.session.add(transaction)
-            db.session.commit()
+        # ✅ Ensure transaction_type is correctly set
+        if not txn.transaction_type:  # fix if empty
+            txn.transaction_type = txn.transaction_type or "shares_contribution"  # default if needed
 
-            print(f"✅ Success: {amount} received, Receipt {receipt}, Phone {phone}, Time {trans_time}")
-           
+        db.session.commit()
+        print(f"✅ Payment success: {txn.receipt}, Type: {txn.transaction_type}")
+
+        # 3️⃣ Handle different transaction types
+        member = Member.query.filter_by(phone=txn.phone).first()
+        if not member:
+            print(f"⚠️ Member not found for phone {txn.phone}")
         else:
-            # Payment failed/cancelled
-            print(f"❌ Failed: {result_desc}")
+            # Shares contribution → create Contribution record
+            if txn.transaction_type == "shares_contribution":
+                contribution = Contribution(
+                    memberId=member.id,
+                    memberName=member.name,
+                    month=datetime.now().strftime("%Y-%m"),
+                    amount=txn.amount,
+                    date=datetime.today().strftime('%d/%m/%Y')
+                )
+                db.session.add(contribution)
+                db.session.commit()
+                print(f"✅ Contribution recorded: {contribution.id}")
 
-    except Exception as e:
-        print("⚠️ Error parsing callback:", e)
+            # Future: other txn types like registration_fee, loan_repayment etc.
+            elif txn.transaction_type == "registration_fee":
+                 handle_registration_fee(txn, member)
 
-    # Always acknowledge Safaricom
+    else:
+        # Payment failed
+        txn.status = "failed"
+        db.session.commit()
+        print(f"❌ Payment failed: {result_desc}")
+
     return jsonify({"ResultCode": 0, "ResultDesc": "Callback received successfully"})
 
 
-def parse_mpesa_timestamp(timestamp):
-    """Convert MPESA timestamp to DD/MM/YYYY and YYYY-MM"""
-    dt = datetime.strptime(timestamp, "%Y%m%d%H%M%S")
-    human_date = dt.strftime("%d/%m/%Y")
-    year_month = dt.strftime("%Y-%m")
-    return human_date, year_month
+@app.route("/payment_status")
+@cross_origin()
+def payment_status():
+    reference = request.args.get("checkout_request_id")  # ← match what frontend sends
+    print("Checking payment status for:", reference)
+    txn = MpesaTransaction.query.filter_by(checkout_request_id=reference).first()
 
-def normalize_phone(phone):
-    """
-    Normalize Kenyan phone numbers to 2547XXXXXXXX format.
-    
-    Examples:
-    0712345678  -> 254712345678
-    +254712345678 -> 254712345678
-    254712345678  -> 254712345678
-    """
-    phone = str(phone).strip()  # remove whitespace
-    
-    if phone.startswith("07"):
-        return "254" + phone[1:]
-    elif phone.startswith("+254"):
-        return phone[1:]  # remove '+'
-    elif phone.startswith("254"):
-        return phone
-    else:
-        raise ValueError(f"Invalid phone number format: {phone}")
-    
-    
-def initiate_mcash():
-    data = request.get_json()
+    if not txn:
+        return jsonify({"status": "pending"})
+
+    return jsonify({"status": txn.status})
+
+# def initiate_mcash():
+#     data = request.get_json()
 
     
-    mcash = MCashRecords(
-        member_id=data["reference"],
-        month=data["month"],
-        code=data["code"],
-        received_amount = data["amount"],
-        phone= data["phone_number"],
-        loanno= data["LoanNo"], 
-        installment=data["installment"]             
-    )
+#     mcash = MCashRecords(
+#         member_id=data["reference"],
+#         month=data["month"],
+#         code=data["code"],
+#         received_amount = data["amount"],
+#         phone= data["phone_number"],
+#         loanno= data["LoanNo"], 
+#         installment=data["installment"]             
+#     )
 
-    db.session.add(mcash)
-    db.session.commit()
+#     db.session.add(mcash)
+#     db.session.commit()
 
-    return jsonify({
-        "member_id": mcash.member_id,
-        "month": mcash.month,
-        "code": mcash.code,
-        "amount_received": mcash.received_amount,
-        "phone": mcash.phone,
-        "loanno": mcash.loanno,
-    }), 201
-
+#     return jsonify({
+#         "member_id": mcash.member_id,
+#         "month": mcash.month,
+#         "code": mcash.code,
+#         "amount_received": mcash.received_amount,
+#         "phone": mcash.phone,
+#         "loanno": mcash.loanno,
+#     }), 201
 

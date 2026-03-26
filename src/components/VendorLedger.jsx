@@ -10,7 +10,6 @@ const VendorLedger = () => {
 
   const navigate = useNavigate();
 
-
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState(null);
@@ -23,7 +22,7 @@ const VendorLedger = () => {
       setLoading(true);
       try {
         const res = await fetch(
-          `http://127.0.0.1:5000/api/vendor-ledger?month=${month}`
+          `http://127.0.0.1:5000/api/vendor-ledger?month=${month}`,
         );
         if (!res.ok) throw new Error("Failed to fetch ledger");
         const data = await res.json();
@@ -76,6 +75,8 @@ const VendorLedger = () => {
       alert("Failed to update received amount");
     }
   };
+
+
 
   return (
     <div className="dashboard">

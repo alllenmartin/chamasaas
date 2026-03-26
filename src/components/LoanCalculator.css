@@ -1,0 +1,108 @@
+/* Main Container */
+.loan-container {
+  max-width: 1100px;
+  margin: 40px auto;
+  padding: 30px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  font-family: "Segoe UI", sans-serif;
+}
+
+/* Title */
+.loan-container h2 {
+  margin-bottom: 20px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+/* Form Section */
+.loan-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+/* Inputs */
+.loan-form input {
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  outline: none;
+  font-size: 14px;
+  transition: 0.3s ease;
+}
+
+.loan-form input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+/* Button */
+.loan-form button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: 0.3s ease;
+}
+
+.loan-form button:hover {
+  background: #1d4ed8;
+}
+
+/* EMI Display */
+.loan-container h3 {
+  margin: 15px 0;
+  color: #059669;
+  font-weight: 600;
+}
+
+/* Table Wrapper */
+.table-wrapper {
+  overflow-x: auto;
+}
+
+/* Table Styling */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+thead {
+  background: #f1f5f9;
+}
+
+thead th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #334155;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+tbody td {
+  padding: 10px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+tbody tr:hover {
+  background: #f9fafb;
+}
+
+/* Positive / negative styling */
+td:last-child {
+  font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .loan-container {
+    padding: 20px;
+  }
+}

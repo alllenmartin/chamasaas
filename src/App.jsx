@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import Dashboard from "./components/Dashboard";
 import Settings from "./components/Settings";
 import Members from "./components/Members";
+import MemberDetail from "./components/MembersRegistrationWizard";
 import MemberContributions from "./components/MemberContributions";
 import MemberCredit from "./components/MemberCredit";
 import CreditList from "./components/CreditList";
@@ -12,6 +13,12 @@ import Unauthorized from "./components/Unauthorized";
 import CreditCard from "./components/CreditCard";
 import VendorLedger from "./components/VendorLedger";
 import VendorList from "./components/VendorList";
+import LoanCalculator from "./components/LoanCalculator";
+import MemberCreditSecurity from "./components/MemberCreditSecurity";
+import MemberDetails from "./components/MemberDetails";
+import MemberRegistration from "./components/MemberRegistration";
+import ProductSetup from "./pages/ProductSetup";
+
 
 const App = () => {
   return (
@@ -30,11 +37,39 @@ const App = () => {
         }
       />
 
+<Route path="/members/register" element={<MemberRegistration />} />
       <Route
         path="/settings"
         element={
           <ProtectedRoute>
             <Settings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/repayment_schedule"
+        element={
+          <ProtectedRoute>
+            <LoanCalculator />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route path="/product-setup" element={<ProductSetup />} />
+
+      <Route
+        path="/members"
+        element={
+          <ProtectedRoute>
+            <Members />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/members/:id"
+        element={
+          <ProtectedRoute>
+            <MemberDetails />
           </ProtectedRoute>
         }
       />
@@ -46,6 +81,20 @@ const App = () => {
             <Members />
           </ProtectedRoute>
         }
+      />
+
+      <Route
+        path="/members/:id"
+        element={
+          <ProtectedRoute>
+            <MemberDetail />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/credit-security/:memberId"
+        element={<MemberCreditSecurity />}
       />
 
       <Route
@@ -82,7 +131,7 @@ const App = () => {
           </ProtectedRoute>
         }
       />
-       <Route
+      <Route
         path="/vendors"
         element={
           <ProtectedRoute>
@@ -91,7 +140,7 @@ const App = () => {
         }
       />
 
-        <Route
+      <Route
         path="/vendors/ledger"
         element={
           <ProtectedRoute>
@@ -99,8 +148,6 @@ const App = () => {
           </ProtectedRoute>
         }
       />
-
-      
 
       {/* Optional: protect registration (admin only later) */}
       <Route

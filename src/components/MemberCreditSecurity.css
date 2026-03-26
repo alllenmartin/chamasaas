@@ -1,0 +1,97 @@
+.main-content {
+  padding: 24px;
+  min-height: 100vh;
+  margin-left: 260px; /* space for sidebar */
+  background: var(--bg);
+}
+
+.security-summary {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.summary-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  flex: 1;
+  text-align: center;
+  cursor: default;
+  transition: all 0.2s ease;
+}
+
+.summary-card.clickable:hover {
+  background: var(--primary);
+  color: white;
+  transform: translateY(-2px);
+}
+
+.table-container {
+  margin-top: 16px;
+  background: var(--card);
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.security-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+}
+
+.security-table th,
+.security-table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.security-table th {
+  background: #f3f4f6;
+  font-weight: 600;
+}
+
+.add-entry-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.add-entry-form input {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.add-entry-form button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  background: var(--primary);
+  color: white;
+  border-radius: 6px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.add-entry-form button:hover {
+  background: var(--primary-hover);
+}
+
+.remove-btn {
+  background: var(--danger);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.remove-btn:hover {
+  background: var(--danger-hover);
+}
+
