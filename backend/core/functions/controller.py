@@ -1,6 +1,6 @@
 
 from flask import Blueprint, jsonify, request,abort
-from .models import CreditStatusEnum, db, ChamaSettings,Member,Contribution,Credit,CreditRepayment,VendorLedger,Vendor,RepaymentSchedule
+from .models import CreditStatusEnum, db, ChamaSettings,Member,Contribution,Credit,CreditRepayment,VendorLedger,Vendor,RepaymentSchedule,CreditTransaction,TransactionType
 from datetime import datetime,timedelta
 from datetime import date
 import calendar
@@ -194,6 +194,7 @@ def request_credit():
         amount_requested=data["amountRequested"],
         interest_rate=data["interestRate"],
         installments=data["installments"],
+        insurance_fee = calculate_insurance_fee(data["installments"],data["amountRequested"]),
     )
 
     db.session.add(credit)
@@ -202,23 +203,60 @@ def request_credit():
     return jsonify(credit.to_dict()), 201
 
 
+
+
 def update_credit_status(loan_id):
     credit = Credit.query.filter_by(loan_id=loan_id).first_or_404()
     data = request.json
 
+   
+
     if credit.status == CreditStatusEnum.Completed:
         return jsonify({"error": "Completed loans cannot be edited"}), 400
 
+    # ✅ Handle status change (loan disbursement)
     if "status" in data:
-        credit.status = CreditStatusEnum(data["status"])
+        new_status = CreditStatusEnum(data["status"])
 
+        
+
+        # Detect disbursement moment
+        if credit.status == CreditStatusEnum.Pending:
+            txn = CreditTransaction(
+                loan_id=loan_id,
+                transaction_type=TransactionType.LOAN,
+                amount=CreditTransaction.normalize_amount(
+                    TransactionType.LOAN,
+                    credit.amount_requested
+                )
+            )
+            db.session.add(txn)
+
+            print(txn)
+
+        credit.status = CreditStatusEnum.Active
+
+    # ✅ Handle repayment
     if "amountPaid" in data:
-        credit.amount_paid = float(data["amountPaid"])
+        amount = float(data["amountPaid"])
 
-        if credit.remaining_balance == 0:
-            credit.status = CreditStatusEnum.Completed
+        txn = CreditTransaction(
+            loan_id=loan_id,
+            transaction_type=TransactionType.REPAYMENT,
+            amount=normalize_amount(
+                TransactionType.REPAYMENT,
+                amount
+            )
+        )
+        db.session.add(txn)
 
     db.session.commit()
+
+    # ✅ Auto-close loan if fully paid
+    # if credit.outstanding_balance >= 0:
+    #     credit.status = CreditStatusEnum.Completed
+    #     db.session.commit()
+
     return jsonify(credit.to_dict())
 
 def get_credit(loan_id):
@@ -266,30 +304,8 @@ def add_months(d, months):
     return date(year, month, day)
 
 
-# =========================
-# Generate Repayment Schedule
-# =========================
-# def get_schedule(loanId):
-#     # Make sure the credit exists
-#     credit = Credit.query.filter_by(loan_id=loanId).first_or_404()
-
-#     # Fetch all repayments for this loan
-#     repayments = CreditRepayment.query.filter_by(loan_id=loanId).order_by(CreditRepayment.installment_number).all()
-
-#     # Convert them to dictionaries for frontend
-#     schedule_list = []
-#     for item in repayments:
-#         schedule_list.append({
-#             "installment_number": item.installment_number,
-#             "due_date": item.due_date.isoformat(),
-#             "principal": float(item.principal),
-#             "interest": float(item.interest),
-#             "total": float(item.total),
-#             "remaining_balance": float(item.remaining_balance),
-#             "paid": item.paid,
-#         })
-
-#     return jsonify({"schedule": schedule_list})
+def calculate_insurance_fee(installments, amount_requested):
+    return (installments * amount_requested) * 0.01
 
 def get_schedule(loan_id):
     loan = Credit.query.filter_by(loan_id=loan_id).first()
@@ -314,7 +330,7 @@ def get_schedule(loan_id):
 def generate_schedule(loan_id):
     credit = Credit.query.filter_by(loan_id=loan_id).first_or_404()
 
-    # 🔒 Lock check
+    # Lock check
     if credit.schedule_generated:
         return jsonify({"error": "Schedule already generated"}), 403
 
@@ -936,14 +952,17 @@ def new_generate_schedule():
     })
 
 def save_schedule(loan_id):
-    loan = loan.query.filter_by(loanId=loan_id).first()
+    loan = Credit.query.filter_by(loan_id=loan_id).first()
 
     if not loan:
         return jsonify({"error": "Loan not found"}), 404
 
+    # Optional: clear existing schedule
+    RepaymentSchedule.query.filter_by(loan_id=loan_id).delete()
+
     loan_data = {
-        "amountRequested": loan.amountRequested,
-        "interestRate": loan.interestRate,
+        "amountRequested": loan.amount_requested,
+        "interestRate": loan.interest_rate,
         "installments": loan.installments
     }
 
@@ -970,6 +989,7 @@ def generate_schedule(loan):
         raise ValueError(f"Expected dict but got {type(loan)}")
 
     schedule = []  # ✅ FIX
+    
 
     P = float(loan.get("amountRequested", 0))
     r = float(loan.get("interestRate", 0)) / 100 / 12

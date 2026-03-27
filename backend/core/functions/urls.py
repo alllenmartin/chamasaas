@@ -1,5 +1,5 @@
 
-from flask import request
+from flask import request,jsonify
 from flask_cors import cross_origin
 from app import app
 from .controller import save_schedule,new_generate_schedule,get_contributions_each,member_lookup,get_settings,send_sms,update_settings,add_member,get_members,update_member,delete_member,get_contributions,add_contribution,request_credit,get_credits,credit_members,update_credit_status,get_credit,generate_schedule,get_schedule,mark_paid,get_vendor_ledger,receive_vendor_payment,get_vendors,create_vendor,delete_vendor,update_vendor,get_contributions_monthly,get_repayment_schedule
@@ -82,12 +82,18 @@ def edit_loans(loan_id):
     else: return 'Method is Not Allowed'
     
 # Repayment Schedule
-@app.route("/api/credit/<loan_id>/schedule", methods=["GET","POST"])
+
+@app.route("/api/credit/<loan_id>/schedule", methods=["GET", "POST"])
 @cross_origin()
 def rep_schedule(loan_id):
-    if request.method == 'GET': return get_schedule(loan_id)
-    if request.method == 'POST': return generate_schedule(loan_id)
-    else: return 'Method is Not Allowed'
+    if request.method == 'GET':
+        return get_schedule(loan_id)
+
+    elif request.method == 'POST':
+        return save_schedule(loan_id)  #  call save function
+
+    else:
+        return 'Method is Not Allowed'
     
 @app.route("/api/repayments", methods=["GET"])   
 @cross_origin() 
@@ -136,13 +142,6 @@ def initiate_transaction():
     else: return 'Method is Not Allowed'
     
     
-# @app.route("/api/mcash", methods=['GET','POST'])
-# @cross_origin()
-# def mcs():
-#     if request.method == 'POST': return dummy()
-#     else: return 'Method is Not Allowed'
-    
-    
     
 # SMS
 @app.route("/send-sms", methods=["POST"])
@@ -151,18 +150,3 @@ def send_sms_notification():
     if request.method == 'POST': return send_sms()
     else: return 'Method is Not Allowed'
     
-# @app.route("/api/mcash", methods=['GET','POST'])
-# @cross_origin()
-# def mcash_init():
-    # if request.method == 'GET': return get_mpesa_transactions()
-    # if request.method == 'POST': return initiate_mcash()
-    # else: return 'Method is Not Allowed'
-
-
-    
-@app.route("/api/credit/<loan_id>/schedule", methods=["POST"])
-@cross_origin()
-def save_loan_schedule(loan_id):
-    if request.method == 'POST': return save_schedule(loan_id)
-    # if request.method == 'POST': return add_member()
-    else: return 'Method is Not Allowed'

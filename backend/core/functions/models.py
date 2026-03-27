@@ -13,6 +13,7 @@ class CreditStatusEnum(enum.Enum):
     Active = "Active"
     Completed = "Completed"
     Defaulted = "Defaulted"
+    Approved = "Approved"
 
 # Enum for frequency
 class FrequencyEnum(enum.Enum):
@@ -25,6 +26,18 @@ class OrganizationTypeEnum(enum.Enum):
     Savings = "Savings"
     Credit = "Credit"
     Both = "Both"
+
+#Transaction Type
+class TransactionType(enum.Enum):
+    LOAN = "Loan"
+    REPAYMENT = "Repayment"
+    INTEREST_PAID = "Interest Paid"
+    INTEREST_DUE = "Interest Due"
+    PENALTY_PAID = "Penalty Paid"
+    PENALTY_DUE = "Penalty Due"
+    INSURANCE_PAID = "Insurance Fee Paid"
+    INSURANCE_DUE = "Insurance Fee Due"
+    
 
 class ChamaSettings(db.Model):
     __tablename__ = "chama_settings"
@@ -97,70 +110,108 @@ class Contribution(db.Model):
             "amount": self.amount,
             "date": self.date,
         }
-        
+
+class CreditTransaction(db.Model):
+    __tablename__ = "credit_transaction"
+
+    id = db.Column(db.Integer, primary_key=True)
+    loan_id = db.Column(db.String(10), db.ForeignKey("credit.loan_id"), nullable=False)
+    
+    transaction_type = db.Column(db.Enum(TransactionType), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Use back_populates instead of backref
+    credit = db.relationship("Credit", back_populates="transactions")
+
+    @staticmethod
+    def normalize_amount(transaction_type, amount):
+        positive_types = {
+            TransactionType.LOAN,
+            TransactionType.INTEREST_PAID,
+            TransactionType.PENALTY_PAID,
+            TransactionType.INSURANCE_PAID,
+        }
+
+        negative_types = {
+            TransactionType.REPAYMENT,
+            TransactionType.INTEREST_DUE,
+            TransactionType.PENALTY_DUE,
+            TransactionType.INSURANCE_DUE,
+        }
+
+        if transaction_type in positive_types:
+            return abs(amount)
+        elif transaction_type in negative_types:
+            return -abs(amount)
+        else:
+            raise ValueError("Invalid transaction type")
+
+
 class Credit(db.Model):
     __tablename__ = "credit"
-    id = db.Column(db.Integer, primary_key=True)  # internal PK
+
+    id = db.Column(db.Integer, primary_key=True)
     loan_id = db.Column(db.String(10), unique=True, nullable=False)
     member_id = db.Column(db.String(8), db.ForeignKey("member.id"), nullable=False)
     member = relationship("Member", backref="credits", foreign_keys=[member_id])
     amount_requested = db.Column(db.Integer, nullable=False)
     interest_rate = db.Column(db.Float, nullable=False)
     installments = db.Column(db.Integer, nullable=False)
-    amount_paid = db.Column(db.Float, nullable=False, default=0)
+    insurance_fee=db.Column(db.Float,default=0)
     schedule_generated = db.Column(db.Boolean, default=False)
-    paid_interest = db.Column(db.Float, default=0.0)
     interest_method = db.Column(db.String(50), default="amortized")
-    paid_penalty = db.Column(db.Numeric(10, 2), default=0)
-   
 
-
-
+    # Relationship to transactions
+    transactions = db.relationship(
+        "CreditTransaction",
+        back_populates="credit",
+        lazy="dynamic"
+    )
     status = db.Column(
         db.Enum(CreditStatusEnum),
         nullable=False,
         default=CreditStatusEnum.Pending
     )
-
-    created_at = db.Column(db.Date, default=date.today)
-    
-    
-    # @property
-    # def total_payable(self):
-    #     rate = self.interest_rate or 0
-    #     return self.amount_requested + (
-    #         self.amount_requested * rate / 100
-    #     )
-    @property
-    def total_payable(self):
-        return round(self.amount_requested + self.interest_amount, 2)
+    created_at = db.Column(db.Date, default=date.today) 
 
     @property
-    def remaining_balance(self):
-        paid = self.amount_paid or 0
-        return max(self.total_payable - paid, 0)
-    
- 
-    @property
-    def interest_amount(self):
-        rate = self.interest_rate or 0
-        months = self.installments or 0
+    def outstanding_balance(self):
+        return round(sum(
+            t.amount for t in self.transactions
+            if t.transaction_type in [TransactionType.LOAN, TransactionType.REPAYMENT]
+        ), 2)
 
-        if getattr(self, "interest_method", "straight Line") == "straight":
-            # Simple interest: principal * rate * months / 12
-            return round(self.amount_requested * rate / 100 * months / 12, 2)
-        elif self.interest_method == "amortized":
-            # Amortized interest = total_payable - principal
-            n = months
-            r = rate / 100 / 12  # monthly rate
-            if r == 0:
-                monthly_payment = self.amount_requested / n
-            else:
-                monthly_payment = self.amount_requested * (r * (1 + r) ** n) / ((1 + r) ** n - 1)
-            total = monthly_payment * n
-            return round(total - self.amount_requested, 2)
-        else:
-            raise ValueError("Invalid interest method")
+    @property
+    def outstanding_interest(self):
+        return round(sum(
+            t.amount for t in self.transactions
+            if t.transaction_type in [TransactionType.INTEREST_PAID, TransactionType.INTEREST_DUE]
+        ), 2)
+
+    @property
+    def outstanding_penalty(self):
+        return round(sum(
+            t.amount for t in self.transactions
+            if t.transaction_type in [TransactionType.PENALTY_PAID, TransactionType.PENALTY_DUE]
+        ), 2)
+
+    @property
+    def outstanding_insurance(self):
+        return round(sum(
+            t.amount for t in self.transactions
+            if t.transaction_type in [TransactionType.INSURANCE_PAID, TransactionType.INSURANCE_DUE]
+        ), 2)
+
+    @property
+    def total_outstanding(self):
+        return round(
+            self.outstanding_balance +
+            self.outstanding_interest +
+            self.outstanding_penalty +
+            self.outstanding_insurance,
+            2
+        )
     
     @property
     def expected_completion_date(self):
@@ -180,18 +231,23 @@ class Credit(db.Model):
             "memberPhone": self.member.phone if self.member else "",
             "amountRequested": self.amount_requested,
             "interestRate": self.interest_rate,
-            "interestAmount": round(self.interest_amount, 2),
+            "interestAmount": round(self.outstanding_interest, 2),
+            "remainingBalance": self.outstanding_balance,
+            "outstandingInterest": self.outstanding_interest,
+            "outstandingPenalty": self.outstanding_penalty,
+            "outstandingInsurance": self.outstanding_insurance,
+            "totalOutstanding": self.total_outstanding,
             "installments": self.installments,
-            "amountPaid": self.amount_paid or 0,
-            "totalPayable": round(self.total_payable, 2),
-            "remainingBalance": round(self.remaining_balance, 2),
+            "amountPaid":  self.outstanding_balance,
+            "totalPayable": round(self.total_outstanding, 2),
+            "insuranceFee": self.insurance_fee,
             "expectedCompletionDate": (
                 self.expected_completion_date.isoformat()
                 if self.expected_completion_date
                 else None
             ),
             "status": self.status.value,
-            "createdAt": self.created_at.isoformat(),
+            "createdAt": self.created_at.isoformat() if self.created_at else None,
         }
 
 class CreditRepayment(db.Model):

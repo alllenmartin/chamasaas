@@ -99,20 +99,26 @@ const CreditCard = () => {
             <span>{loan.memberName}</span>
           </div>
           <div className="card-row">
-            <label>Amount:</label>
+            <label>Amount Requested:</label>
             <span>KES {money(loan.amountRequested)}</span>
           </div>
           <div className="card-row">
             <label>Interest Rate:</label>
             <span>{loan.interestRate}%</span>
           </div>
-          <div className="card-row">
-            <label>Amount Paid:</label>
-            <span>KES {money(loan.amountPaid)}</span>
-          </div>
+        
           <div className="card-row">
             <label>Outstanding Balance:</label>
             <span>KES {money(loan.remainingBalance)}</span>
+          </div>
+            <div className="card-row">
+            <label>Outstanding Interest :</label>
+            <span>KES {money(loan.outstandingInterest)}</span>
+          </div>
+          
+           <div className="card-row">
+            <label>Insurance Fee:</label>
+            <span>KES {money(loan.insuranceFee)}</span>
           </div>
 
           {/* -------------------------

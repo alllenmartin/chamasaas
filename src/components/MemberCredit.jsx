@@ -14,6 +14,7 @@ const settings = JSON.parse(localStorage.getItem("chamaSettings")) || {};
 const INTEREST_RATE = Number(settings.interestRate || 10);
 const registrationFee = Number(settings.registrationFee || 0);
 const MIN_CREDIT_AMOUNT = 1000;
+const insuranceFee = Number(settings.insuranceFee || 2);
 
 const completionDateFromInstallments = (months) => {
   const date = new Date();
@@ -162,39 +163,6 @@ const MemberCredit = () => {
   const isQualified =
     isRegistered && qualifiedAmount >= MIN_CREDIT_AMOUNT && !hasDefaultedLoan;
 
-  // const handleSubmitCredit = async () => {
-  //   if (isSubmitting) return;
-
-  //   setIsSubmitting(true);
-
-  //   try {
-  //     const payload = {
-  //       memberId: selectedMember.id,
-  //       amountRequested: Number(amountRequested),
-  //       installments: Number(installments),
-  //       interestRate: INTEREST_RATE,
-  //     };
-
-  //     const res = await fetch("http://127.0.0.1:5000/api/credit", {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify(payload),
-  //     });
-
-  //     if (!res.ok) throw new Error("Request failed");
-
-  //     toast.success("Credit request submitted successfully");
-
-  //     setAmountRequested("");
-  //     setInstallments("");
-  //     setShowModal(false);
-  //   } catch (err) {
-  //     console.error(err);
-  //     toast.error("Failed to submit credit request");
-  //   } finally {
-  //     setIsSubmitting(false);
-  //   }
-  // };
 
   
   const handleSubmitCredit = async () => {
@@ -208,6 +176,7 @@ const MemberCredit = () => {
       amountRequested: Number(amountRequested),
       installments: Number(installments),
       interestRate: INTEREST_RATE,
+      insuranceFee: insuranceFee,
     };
 
     const res = await fetch("http://127.0.0.1:5000/api/credit", {
@@ -337,80 +306,7 @@ const MemberCredit = () => {
           </div>
         )}
       </main>
-      {/* 
-      {showModal && (
-        <div className="modal-backdrop">
-          <div className="modal">
-            <h3>Request Credit</h3>
-
-            <p>
-              <strong>Max Allowed:</strong> KES{" "}
-              {availableCredit.toLocaleString()}
-            </p>
-
-            <input
-              type="number"
-              placeholder="Amount Requested"
-              value={amountRequested}
-              onChange={(e) => setAmountRequested(e.target.value)}
-            />
-
-            {Number(amountRequested) > availableCredit && (
-              <p style={{ color: "#e74c3c" }}>Amount exceeds qualified limit</p>
-            )}
-
-            <input
-              type="number"
-              placeholder="Repayment Period (months)"
-              value={installments}
-              onChange={(e) => setInstallments(e.target.value)}
-              style={{ marginTop: "8px" }}
-            />
-
-            {Number(installments) > maxInstallments && (
-              <p style={{ color: "#e74c3c" }}>
-                Installments exceed the maximum allowed
-              </p>
-            )}
-
-            {installments && (
-              <p style={{ marginTop: "8px" }}>
-                <strong>Expected Completion:</strong>{" "}
-                {completionDateFromInstallments(installments)}
-              </p>
-            )}
-        
-
-            <div className="modal-actions">
-              <button
-                className="view-btn"
-                disabled={isSubmitting}
-                onClick={() => {
-                  setShowModal(false);
-                  setAmountRequested("");
-                  setInstallments("");
-                }}
-              >
-                Cancel
-              </button>
-
-              <button
-                className="view-btn"
-                disabled={
-                  isSubmitting ||
-                  !amountRequested ||
-                  !installments ||
-                  Number(amountRequested) > availableCredit
-                }
-                onClick={handleSubmitCredit}
-              >
-                {isSubmitting ? "Submitting..." : "Submit"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-       */}
+     
 
       {showModal && (
         <div className="modal-backdrop">

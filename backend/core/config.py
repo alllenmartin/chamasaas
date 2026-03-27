@@ -13,7 +13,7 @@ class DevelopmentConfig(Config):
     # SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:10224@localhost:5432/eveshop_db'
     # DEVELOPMENT_DATABASE_URL = 'postgresql://postgres:10224@localhost:5432/eveshop'
     # SQLALCHEMY_DATABASE_URI = "mysql+pymysql://root:@localhost:3306/chama"
-    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:10224@localhost:5432/chama'
+    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:allen10224@localhost:5432/chama'
     MAIL_SERVER = "smtp.gmail.com"
     MAIL_PORT = 587
     MAIL_USE_TLS = True
