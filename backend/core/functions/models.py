@@ -223,7 +223,7 @@ class Credit(db.Model):
         return self.created_at + timedelta(days=30 * months)
 
 
-    def to_dict(self):
+    def to_dict(self):                                                                                                                                                                                                                                                     
         return {
             "loanId": self.loan_id,
             "memberId": self.member_id,
@@ -360,3 +360,14 @@ class RepaymentSchedule(db.Model):
     interest = db.Column(db.Float)
     total_payment = db.Column(db.Float)
     balance = db.Column(db.Float)
+
+
+class DailyLoansInterestBuffer(db.Model):
+    __tablename__ = "daily_loansinterest_buffer"
+
+    id = db.Column(db.Integer, primary_key=True)
+    loan_id = db.Column(db.String(50))
+    interest_date = db.Column(db.Date)
+    product_type = db.Column(db.String(100))
+    interest_amount = db.Column(db.Float)
+    outstanding_balance = db.Column(db.Float)

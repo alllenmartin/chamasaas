@@ -18,6 +18,7 @@ import MemberCreditSecurity from "./components/MemberCreditSecurity";
 import MemberDetails from "./components/MemberDetails";
 import MemberRegistration from "./components/MemberRegistration";
 import ProductSetup from "./pages/ProductSetup";
+import LoanRepayment from "./components/LoanRepayment";
 
 
 const App = () => {
@@ -28,136 +29,25 @@ const App = () => {
       <Route path="/unauthorized" element={<Unauthorized />} />
 
       {/* Protected routes */}
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
-
-<Route path="/members/register" element={<MemberRegistration />} />
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute>
-            <Settings />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/repayment_schedule"
-        element={
-          <ProtectedRoute>
-            <LoanCalculator />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route path="/product-setup" element={<ProductSetup />} />
-
-      <Route
-        path="/members"
-        element={
-          <ProtectedRoute>
-            <Members />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/members/:id"
-        element={
-          <ProtectedRoute>
-            <MemberDetails />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/members"
-        element={
-          <ProtectedRoute>
-            <Members />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/members/:id"
-        element={
-          <ProtectedRoute>
-            <MemberDetail />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/credit-security/:memberId"
-        element={<MemberCreditSecurity />}
-      />
-
-      <Route
-        path="/contributions"
-        element={
-          <ProtectedRoute>
-            <MemberContributions />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/credit"
-        element={
-          <ProtectedRoute>
-            <MemberCredit />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/credit-list"
-        element={
-          <ProtectedRoute>
-            <CreditList />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/credit/:loanId"
-        element={
-          <ProtectedRoute>
-            <CreditCard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/vendors"
-        element={
-          <ProtectedRoute>
-            <VendorList />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/vendors/ledger"
-        element={
-          <ProtectedRoute>
-            <VendorLedger />
-          </ProtectedRoute>
-        }
-      />
-
+      <Route path="/" element={ <ProtectedRoute>  <Dashboard /> </ProtectedRoute>  } />
+      <Route path="/members/register" element={<ProtectedRoute><MemberRegistration /></ProtectedRoute>} />
+      <Route path="/settings"  element={   <ProtectedRoute>  <Settings />  </ProtectedRoute>  }    />
+      <Route path="/repayment_schedule" element={<ProtectedRoute> <LoanCalculator /> </ProtectedRoute>}/>
+      <Route path="/product-setup" element={<ProtectedRoute><ProductSetup /></ProtectedRoute>} />
+      <Route path="/loan_journal" element={<ProtectedRoute><LoanRepayment /></ProtectedRoute>} />
+      <Route path="/members" element={<ProtectedRoute><Members /></ProtectedRoute>}/>
+      <Route  path="/members/:id"  element={<ProtectedRoute><MemberDetails /></ProtectedRoute>} />
+      <Route  path="/members" element={  <ProtectedRoute> <Members />  </ProtectedRoute>}/>
+      <Route  path="/members/:id"  element={ <ProtectedRoute>  <MemberDetail /> </ProtectedRoute> } />
+      <Route  path="/credit-security/:memberId" element={<MemberCreditSecurity />} />
+      <Route path="/contributions" element={ <ProtectedRoute>  <MemberContributions /> </ProtectedRoute> } />
+      <Route path="/credit"  element={ <ProtectedRoute>  <MemberCredit />   </ProtectedRoute> }/>
+      <Route path="/credit-list" element={<ProtectedRoute>   <CreditList /> </ProtectedRoute> }/>
+      <Route path="/credit/:loanId"  element={  <ProtectedRoute>  <CreditCard /> </ProtectedRoute> }/>
+      <Route path="/vendors"  element={ <ProtectedRoute>  <VendorList />  </ProtectedRoute> }/>
+      <Route path="/vendors/ledger"  element={ <ProtectedRoute>  <VendorLedger /> </ProtectedRoute> }/>
       {/* Optional: protect registration (admin only later) */}
-      <Route
-        path="/register"
-        element={
-          <ProtectedRoute>
-            <UserRegister />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/register"  element={  <ProtectedRoute>   <UserRegister />  </ProtectedRoute>} />
     </Routes>
   );
 };

@@ -79,6 +79,16 @@ const Sidebar = ({ active = "Dashboard" }) => {
               </Link>
             </li>
           )}
+                {canAccess(["treasurer"]) && (
+            <li className={active === "Credit Journal" ? "active" : ""}>
+              <Link to="/loan_journal">
+                <span className="icon">📒</span>
+                <span className="text">Credit Journal</span>
+              </Link>
+            </li>
+          )}
+
+          
 
           {canAccess(["treasurer"]) && (
             <li className={active === "Vendor" ? "active" : ""}>

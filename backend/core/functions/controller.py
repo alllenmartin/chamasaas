@@ -1,6 +1,6 @@
 
 from flask import Blueprint, jsonify, request,abort
-from .models import CreditStatusEnum, db, ChamaSettings,Member,Contribution,Credit,CreditRepayment,VendorLedger,Vendor,RepaymentSchedule,CreditTransaction,TransactionType
+from .models import CreditStatusEnum, db, ChamaSettings,Member,Contribution,Credit,CreditRepayment,VendorLedger,Vendor,RepaymentSchedule,CreditTransaction,TransactionType,DailyLoansInterestBuffer
 from datetime import datetime,timedelta
 from datetime import date
 import calendar
@@ -9,6 +9,8 @@ from .sms import send_sms_to_mobile
 from app import app
 from dateutil.relativedelta import relativedelta
 import math
+from sqlalchemy import func, case
+from .utils import get_days_in_year, get_principal_balance_as_at
 
 
 
@@ -1017,3 +1019,226 @@ def generate_schedule(loan):
         })
 
     return schedule
+
+def calculate_daily_interest_for_today():
+    """
+    Calculates daily interest for all active loans.
+    Includes backfill for any missing days.
+    Stores daily interest in DailyLoansInterestBuffer.
+    """
+    today = date.today()
+    active_loans = Credit.query.filter_by(status=CreditStatusEnum.Active).all()
+
+    for loan in active_loans:
+        # 1️⃣ Determine start date for calculation
+        last_record = DailyLoansInterestBuffer.query.filter_by(
+            loan_id=loan.loan_id
+        ).order_by(DailyLoansInterestBuffer.interest_date.desc()).first()
+
+        start_date = last_record.interest_date + timedelta(days=1) if last_record else loan.created_at
+
+        # 2️⃣ Loop through all missing days up to yesterday
+        for n in range((today - start_date).days):
+            single_date = start_date + timedelta(days=n)
+
+            # Prevent duplicates just in case
+            exists = DailyLoansInterestBuffer.query.filter_by(
+                loan_id=loan.loan_id,
+                interest_date=single_date
+            ).first()
+            if exists:
+                continue
+
+            # 3️⃣ Get outstanding balance as at previous day
+            prev_date = single_date - timedelta(days=1)
+            ob = get_principal_balance_as_at(loan.loan_id, prev_date)
+
+            # 4️⃣ Calculate daily interest
+            diy = get_days_in_year(single_date)
+            interest_amount = round((ob * loan.interest_rate / 100) / diy, 2)
+
+            # 5️⃣ Insert into DailyLoansInterestBuffer
+            buffer_record = DailyLoansInterestBuffer(
+                loan_id=loan.loan_id,
+                interest_date=single_date,
+                product_type=loan.interest_method,
+                interest_amount=interest_amount,
+                outstanding_balance=ob
+            )
+            db.session.add(buffer_record)
+
+    db.session.commit()
+
+
+
+# Monthly
+def calculate_daily_interest_for_month(run_date: date):
+    start_of_month = run_date.replace(day=1)
+    end_of_month = run_date
+
+    active_loans = Credit.query.filter_by(status=CreditStatusEnum.Active).all()
+
+    for loan in active_loans:
+        interest_rate = loan.interest_rate / 100  # convert % to decimal
+
+        current_date = start_of_month
+
+        while current_date <= end_of_month:
+
+            # Skip if already calculated
+            exists = DailyLoansInterestBuffer.query.filter_by(
+                loan_id=loan.loan_id,
+                interest_date=current_date
+            ).first()
+
+            if exists:
+                current_date += timedelta(days=1)
+                continue
+
+            # Get yesterday's balance
+            prev_date = current_date - timedelta(days=1)
+
+            ob = get_principal_balance_as_at(loan.loan_id, prev_date)
+
+            if ob <= 0:
+                current_date += timedelta(days=1)
+                continue
+
+            diy = get_days_in_year(current_date)
+
+            interest_amount = round((ob * interest_rate) / diy, 2)
+
+            buffer = DailyLoansInterestBuffer(
+                loan_id=loan.loan_id,
+                interest_date=current_date,
+                product_type=loan.interest_method,
+                interest_amount=interest_amount,
+                outstanding_balance=ob
+            )
+
+            db.session.add(buffer)
+
+            current_date += timedelta(days=1)
+
+    db.session.commit()
+
+
+
+def post_monthly_interest(as_at_date=None):
+    """
+    Sums daily interest in DailyLoansInterestBuffer for the current month
+    and posts a single INTEREST_DUE transaction per loan.
+    """
+
+    today = as_at_date or date.today()
+    start_of_month = today.replace(day=1)
+
+    results = db.session.query(
+        DailyLoansInterestBuffer.loan_id,
+        func.sum(DailyLoansInterestBuffer.interest_amount)
+    ).filter(
+        DailyLoansInterestBuffer.interest_date >= start_of_month,
+        DailyLoansInterestBuffer.interest_date <= today
+    ).group_by(
+        DailyLoansInterestBuffer.loan_id
+    ).all()
+
+    for loan_id, total_interest in results:
+        # Check if we already posted to avoid duplicates
+        existing = CreditTransaction.query.filter_by(
+            loan_id=loan_id,
+            transaction_type="INTEREST_DUE",
+            created_at=today
+        ).first()
+        if existing:
+            continue
+
+        transaction = CreditTransaction(
+            loan_id=loan_id,
+            transaction_type="INTEREST_DUE",
+            amount=round(total_interest, 2)
+        )
+        db.session.add(transaction)
+
+    db.session.commit()
+    print(f"Posted INTEREST_DUE for {len(results)} loans as of {today}")
+
+
+
+def post_repayment(loan_id: str, amount: float, repayment_date: date = None):
+       
+    repayment_date = repayment_date or date.today()
+    loan = Credit.query.filter_by(loan_id=loan_id).first()
+    if not loan:
+        raise ValueError(f"Loan {loan_id} not found")
+
+    remaining = amount
+
+    # Helper to apply payment to a specific type
+    def apply_payment(transaction_type, outstanding):
+        nonlocal remaining
+        pay = min(outstanding, remaining)
+        if pay > 0:
+            transaction = CreditTransaction(
+                loan_id=loan_id,
+                transaction_type=transaction_type,
+                amount=-pay,  # repayment is negative in your normalize_amount
+                created_at=repayment_date
+            )
+            db.session.add(transaction)
+            remaining -= pay
+        return remaining
+
+    # 1️ Pay Interest first
+    remaining = apply_payment(TransactionType.INTEREST_DUE, loan.outstanding_interest)
+
+    # 2️ Pay Penalty
+    remaining = apply_payment(TransactionType.PENALTY_DUE, loan.outstanding_penalty)
+
+    # 3️ Pay Insurance
+    remaining = apply_payment(TransactionType.INSURANCE_DUE, loan.outstanding_insurance)
+
+    # 4️ Remaining reduces principal
+    remaining = apply_payment(TransactionType.REPAYMENT, loan.outstanding_balance)
+
+    db.session.commit()
+
+    print(f"Repayment of {amount} applied to loan {loan_id}. Remaining unapplied: {remaining}")
+    return remaining
+
+def add_repayment():
+    data = request.json
+    loan_id = data.get("loanId")
+    amount = data.get("amount")
+    repayment_date = data.get("date")
+    if repayment_date:
+        repayment_date = date.fromisoformat(repayment_date)
+    try:
+        remaining = post_repayment(loan_id, amount, repayment_date)
+        return jsonify({
+            "loanId": loan_id,
+            "amount": amount,
+            "remainingUnapplied": remaining,
+            "date": repayment_date.isoformat()
+        })
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    
+
+def get_active_loans():
+    member_id = request.args.get("member_id")  # optional, filter by member
+    query = Credit.query.filter(Credit.status == "Active")  # or CreditStatusEnum.Active
+    if member_id:
+        query = query.filter(Credit.member_id == member_id)
+
+    loans = query.all()
+    loans_list = [
+        {
+            "loanId": l.loan_id,
+            "memberId": l.member_id,
+            "memberName": l.member.name if l.member else "",
+            "totalOutstanding": l.total_outstanding,
+        }
+        for l in loans
+    ]
+    return jsonify(loans_list)

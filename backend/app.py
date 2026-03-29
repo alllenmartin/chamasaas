@@ -1,4 +1,6 @@
 from core import create_app
+import os
+from core.functions.scheduler import start_scheduler
 
 app = create_app()  # Will use FLASK_CONFIG env var or 'development' by default
 
@@ -15,4 +17,6 @@ def hello():
     return "Hello Worvvvld!"
 
 if __name__ == "__main__":
-    app.run()
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        start_scheduler()    
+    app.run(debug=True)

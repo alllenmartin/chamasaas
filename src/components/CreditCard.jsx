@@ -121,6 +121,13 @@ const CreditCard = () => {
             <span>KES {money(loan.insuranceFee)}</span>
           </div>
 
+            <div className="card-row">
+            <label>Outstanding Bill:</label>
+            <span>KES {money(loan.totalOutstanding)}</span>
+          </div>
+
+          
+
           {/* -------------------------
               Editable Fields (Pending Only)
           ------------------------- */}
