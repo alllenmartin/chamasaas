@@ -72,30 +72,82 @@ class ChamaSettings(db.Model):
         
         
 # Member model
+# class Member(db.Model):
+#     __tablename__ = "member" 
+#     id = db.Column(db.String(8), primary_key=True)  # ID number
+#     name = db.Column(db.String(100), nullable=False)
+#     phone = db.Column(db.String(15), nullable=False)
+#     role = db.Column(db.String(20), default="Member")
+#     amountPaid = db.Column(db.Integer, default=0)
+#     status = db.Column(db.String(10), default="Unpaid")
+#     registrationPaid = db.Column(db.Boolean, default=False)
+
+#     def to_dict(self):
+#         return {
+#             "id": self.id,
+#             "name": self.name,
+#             "phone": self.phone,
+#             "role": self.role,
+#             "amountPaid": self.amountPaid,
+#             "status": self.status,
+#             "registrationPaid": self.registrationPaid,
+#         }
+
 class Member(db.Model):
-    __tablename__ = "member" 
-    id = db.Column(db.String(8), primary_key=True)  # ID number
-    name = db.Column(db.String(100), nullable=False)
-    phone = db.Column(db.String(15), nullable=False)
-    role = db.Column(db.String(20), default="Member")
-    amountPaid = db.Column(db.Integer, default=0)
-    status = db.Column(db.String(10), default="Unpaid")
-    registrationPaid = db.Column(db.Boolean, default=False)
+    id = db.Column(db.Integer, primary_key=True)
+    member_id = db.Column(db.String(20), unique=True, nullable=True)
+    first_name = db.Column(db.String(50), nullable=True)
+    second_name = db.Column(db.String(50))
+    last_name = db.Column(db.String(50), nullable=True)
+    national_id = db.Column(db.String(20),unique=True, nullable=True)
+    gender = db.Column(db.String(10), nullable=True)
+    dob = db.Column(db.Date, nullable=True)
+    nationality = db.Column(db.String(50))
+    county = db.Column(db.String(50))
+    sub_county = db.Column(db.String(50))
+    phone = db.Column(db.String(20),unique=True)
+    email = db.Column(db.String(50))
+    address = db.Column(db.String(200))
+    role = db.Column(db.String(20))
+    bank_name = db.Column(db.String(50))
+    branch_name = db.Column(db.String(50))
+    account_number = db.Column(db.String(30))
+    employment = db.Column(db.String(20))
+    employer = db.Column(db.String(50))
+    department = db.Column(db.String(50))
+    terms_of_employment = db.Column(db.String(50))
+    business_type = db.Column(db.String(50))
+    business_name = db.Column(db.String(50))
+    business_location = db.Column(db.String(50))
+    landmark = db.Column(db.String(50))
+    created_at = db.Column(db.Date, default=date.today)
 
     def to_dict(self):
         return {
             "id": self.id,
-            "name": self.name,
+            "name": self.first_name,
             "phone": self.phone,
             "role": self.role,
-            "amountPaid": self.amountPaid,
-            "status": self.status,
-            "registrationPaid": self.registrationPaid,
+            "amountPaid": 0,
+            "status": '',
+            "registrationPaid": 0,
         }
+
+
+class Beneficiary(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    member_id = db.Column(db.String(20), db.ForeignKey('member.member_id'), nullable=False)
+    name = db.Column(db.String(50), nullable=False)
+    phone = db.Column(db.String(20))
+    relation = db.Column(db.String(50))
+    share = db.Column(db.Float)
+    id_number = db.Column(db.String(20))
+    address = db.Column(db.String(200))
+    guardian = db.Column(db.String(50))
         
 class Contribution(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    memberId = db.Column(db.String(8), db.ForeignKey('member.id'), nullable=False)
+    memberId = db.Column(db.Integer, db.ForeignKey('member.id'), nullable=False)
     memberName = db.Column(db.String(100))
     month = db.Column(db.String(7))  # e.g., 2024-01
     amount = db.Column(db.Integer, nullable=False)
@@ -153,7 +205,7 @@ class Credit(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     loan_id = db.Column(db.String(10), unique=True, nullable=False)
-    member_id = db.Column(db.String(8), db.ForeignKey("member.id"), nullable=False)
+    member_id = db.Column(db.Integer, db.ForeignKey("member.id"), nullable=False)
     member = relationship("Member", backref="credits", foreign_keys=[member_id])
     amount_requested = db.Column(db.Integer, nullable=False)
     interest_rate = db.Column(db.Float, nullable=False)

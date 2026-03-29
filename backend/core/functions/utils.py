@@ -1,4 +1,4 @@
-from .models import db,CreditTransaction,TransactionType
+from .models import db,CreditTransaction,TransactionType,Member
 from sqlalchemy import func, case
 import calendar
 from datetime import date
@@ -29,4 +29,13 @@ def is_leap_year(year: int) -> bool:
 
 def get_days_in_year(d: date) -> int:
     return 366 if is_leap_year(d.year) else 365
+
+def generate_member_id():
+    last_member = Member.query.order_by(Member.id.desc()).first()
+    if last_member:
+        last_num = int(last_member.member_id.split("-")[1])
+        new_num = last_num + 1
+    else:
+        new_num = 1
+    return f"MBR-{new_num:06d}"
 

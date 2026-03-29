@@ -1,6 +1,6 @@
 
 from flask import Blueprint, jsonify, request,abort
-from .models import CreditStatusEnum, db, ChamaSettings,Member,Contribution,Credit,CreditRepayment,VendorLedger,Vendor,RepaymentSchedule,CreditTransaction,TransactionType,DailyLoansInterestBuffer
+from .models import CreditStatusEnum, db, ChamaSettings,Member,Contribution,Credit,CreditRepayment,VendorLedger,Vendor,RepaymentSchedule,CreditTransaction,TransactionType,DailyLoansInterestBuffer,Beneficiary
 from datetime import datetime,timedelta
 from datetime import date
 import calendar
@@ -10,7 +10,7 @@ from app import app
 from dateutil.relativedelta import relativedelta
 import math
 from sqlalchemy import func, case
-from .utils import get_days_in_year, get_principal_balance_as_at
+from .utils import get_days_in_year, get_principal_balance_as_at,generate_member_id
 
 
 
@@ -53,22 +53,98 @@ def get_members():
     members = Member.query.all()
     return jsonify([m.to_dict() for m in members]), 200
 
-def add_member():
-    data = request.get_json()
-    if Member.query.get(data['id']):
-        return jsonify({"error": "Member with this ID already exists"}), 400
-    member = Member(
-        id=data["id"],
-        name=data["name"],
-        phone=data["phone"],
-        role=data.get("role", "Member"),
-        amountPaid=data.get("amountPaid", 0),
-        status=data.get("status", "Unpaid"),
-        registrationPaid=data.get("registrationPaid", False),
-    )
-    db.session.add(member)
-    db.session.commit()
-    return jsonify(member.to_dict()), 201
+# def add_member():
+#     data = request.get_json()
+#     if Member.query.get(data['id']):
+#         return jsonify({"error": "Member with this ID already exists"}), 400
+#     member = Member(
+#         id=data["id"],
+#         name=data["name"],
+#         phone=data["phone"],
+#         role=data.get("role", "Member"),
+#         amountPaid=data.get("amountPaid", 0),
+#         status=data.get("status", "Unpaid"),
+#         registrationPaid=data.get("registrationPaid", False),
+#     )
+#     db.session.add(member)
+#     db.session.commit()
+#     return jsonify(member.to_dict()), 201
+
+
+from datetime import datetime
+
+def create_member():
+    data = request.json
+    
+
+    try:
+        # Generate member ID
+        member_id = generate_member_id()
+
+        # ✅ FIX: Convert DOB properly
+        dob_str = data.get("dob")
+        if not dob_str:
+            return jsonify({"error": "Date of birth is required"}), 400
+
+        dob = datetime.strptime(dob_str, "%Y-%m-%d").date()
+
+        new_member = Member(
+            member_id=member_id,
+            first_name=data.get("firstName"),
+            second_name=data.get("secondName"),
+            last_name=data.get("lastName"),
+            national_id=data.get("nationalId"),
+            gender=data.get("gender"),
+            dob=dob,  # ✅ FIXED
+            nationality=data.get("nationality"),
+            county=data.get("county"),
+            sub_county=data.get("subCounty"),
+            phone=data.get("phone"),
+            email=data.get("email"),
+            address=data.get("address"),
+            role=data.get("role"),
+            bank_name=data.get("bankName"),
+            branch_name=data.get("branchName"),
+            account_number=data.get("accountNumber"),
+            employment=data.get("employment"),
+            employer=data.get("employer"),
+            department=data.get("department"),
+            terms_of_employment=data.get("termsOfEmployment"),
+            business_type=data.get("businessType"),
+            business_name=data.get("businessName"),
+            business_location=data.get("businessLocation"),
+            landmark=data.get("landmark"),
+        )
+
+        db.session.add(new_member)
+        db.session.flush()
+
+        # Beneficiaries
+        beneficiaries = data.get("beneficiaries", [])
+        for b in beneficiaries:
+            ben = Beneficiary(
+                member_id=member_id,
+                name=b.get("name"),
+                phone=b.get("phone"),
+                relation=b.get("relation"),
+                share=b.get("share"),
+                id_number=b.get("idNumber"),
+                address=b.get("address"),
+                guardian=b.get("guardian"),
+            )
+            db.session.add(ben)
+
+        db.session.commit()
+
+        return jsonify({
+            "message": "Member created successfully",
+            "memberId": member_id
+        }), 201
+
+    except Exception as e:
+        print(e)
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 
 def update_member(member_id):
