@@ -125,13 +125,56 @@ class Member(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
-            "name": self.first_name,
+            "memberId": self.member_id,
+
+            # Names
+            "name": f"{self.first_name or ''} {self.second_name or ''} {self.last_name or ''}".strip(),
+
+            # Personal
+            "gender": self.gender,
+            "dob": self.dob.isoformat() if self.dob else None,
+            "nationalId": self.national_id,
+            "status": "Active",
+
+            # Contact
             "phone": self.phone,
+            "email": self.email,
+            "address": self.address,
+            "county": self.county,
+            "subcounty": self.sub_county,
+            "nationality": self.nationality,
+
+            # Membership
             "role": self.role,
-            "amountPaid": 0,
-            "status": '',
-            "registrationPaid": 0,
+            "registrationPaid": False,
+
+            # Financial
+            "bankName": self.bank_name,
+            "branchName": self.branch_name,
+            "bankAccountNumber": self.account_number,
+
+            # Employment
+            "employmentType": self.employment,
+            "employerName": self.employer,
+            "departmentName": self.department,
+            "termsOfEmployment": self.terms_of_employment,
+            "businessName": self.business_name,
+            "businessLocation": self.business_location,
+            "landmark": self.landmark,
+
+            # Relations
+           "nextOfKin": [
+                {
+                    "name": b.name,
+                    "phone": b.phone,
+                    "relation": b.relation
+                }
+                for b in self.get_beneficiaries()
+            ]
         }
+    
+    def get_beneficiaries(self):
+     return Beneficiary.query.filter_by(member_id=self.member_id).all()
 
 
 class Beneficiary(db.Model):
@@ -144,6 +187,8 @@ class Beneficiary(db.Model):
     id_number = db.Column(db.String(20))
     address = db.Column(db.String(200))
     guardian = db.Column(db.String(50))
+
+    
         
 class Contribution(db.Model):
     id = db.Column(db.Integer, primary_key=True)

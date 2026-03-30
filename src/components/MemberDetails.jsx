@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import "./Members.css";
+//import "./MemberDetails.css";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -18,7 +19,7 @@ const MemberDetails = () => {
         const res = await fetch(`http://127.0.0.1:5000/api/members`);
         if (!res.ok) throw new Error("Failed to fetch members");
         const data = await res.json();
-        const memberData = data.find((m) => m.id === id);
+        const memberData = data.find((m) => m.id === Number(id));
         if (!memberData) {
           toast.error("Member not found");
         }

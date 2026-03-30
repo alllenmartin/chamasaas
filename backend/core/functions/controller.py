@@ -152,7 +152,7 @@ def update_member(member_id):
     member = Member.query.get(member_id)
     if not member:
         return jsonify({"error": "Member not found"}), 404
-    member.name = data["name"]
+    member.name = data["first_name"]
     member.phone = data["phone"]
     member.role = data.get("role", member.role)
     member.amountPaid = data.get("amountPaid", member.amountPaid)
