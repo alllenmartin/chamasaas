@@ -38,8 +38,9 @@ const App = () => {
       <Route path="/members" element={<ProtectedRoute><Members /></ProtectedRoute>}/>
       <Route  path="/members/:id"  element={<ProtectedRoute><MemberDetails /></ProtectedRoute>} />
       <Route  path="/members" element={  <ProtectedRoute> <Members />  </ProtectedRoute>}/>
-      <Route  path="/members/:id"  element={ <ProtectedRoute>  <MemberDetail /> </ProtectedRoute> } />
-      <Route  path="/credit-security/:memberId" element={<MemberCreditSecurity />} />
+      <Route  path="/members/:member_id"  element={ <ProtectedRoute>  <MemberDetail /> </ProtectedRoute> } />
+      <Route  path="/credit-security/:loanId" element={<MemberCreditSecurity />} />
+      {/* <Route path="/loans/:loanId/security" element={<MemberCreditSecurity />} /> */}
       <Route path="/contributions" element={ <ProtectedRoute>  <MemberContributions /> </ProtectedRoute> } />
       <Route path="/credit"  element={ <ProtectedRoute>  <MemberCredit />   </ProtectedRoute> }/>
       <Route path="/credit-list" element={<ProtectedRoute>   <CreditList /> </ProtectedRoute> }/>

@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from core import bcrypt,db
 from .models import User,OtpAttempt
 from flask_jwt_extended import jwt_required, get_jwt_identity,create_access_token
-from core.utils.auth import generate_access_token
+from core.utils.auth import generate_access_token,send_sms
 import random
 import datetime
 from datetime import datetime, timedelta 
@@ -30,29 +30,7 @@ def create_user():
 
     return jsonify({"msg": "User registered successfully"}), 201
 
-# def login():
-#     data = request.json
-#     phone = data.get("phone")
-#     password = data.get("password")
 
-#     user = User.query.filter_by(phone=phone).first()
-#     if not user:
-#         return jsonify({"msg": "User not found"}), 404
-
-#     if not bcrypt.check_password_hash(user.password, password):
-#         return jsonify({"msg": "Incorrect password"}), 401
-
-#     access_token = create_access_token(
-#         identity={"phone": user.phone, "role": user.role, "name": user.name},
-#         expires_delta=datetime.timedelta(hours=8),
-#     )
-
-#     return jsonify({"access_token": access_token,
-#             "user": {
-#             "phone": user.phone,
-#             "name": user.name,
-#             "role": user.role
-#         }}), 200
 
 
 def login():
@@ -67,14 +45,20 @@ def login():
     if not bcrypt.check_password_hash(user.password, password):
         return jsonify({"msg": "Incorrect password"}), 401
 
-    # ✅ Generate OTP
+  
     otp = str(random.randint(100000, 999999))
     user.otp = otp
     user.otp_expires_at = datetime.utcnow() + timedelta(minutes=5)
     db.session.commit()
 
-    # TODO: send OTP via SMS here
-    print("OTP:", otp)  # TEMP for testing
+  
+    message = f"Your OTP code is {otp}. It expires in 5 minutes. Do not share it."
+
+    sms_response = send_sms(user.phone, message)
+
+    # Optional: log response for debugging
+    print("SMS Response:", sms_response)
+
 
     return jsonify({
         "msg": "OTP sent",

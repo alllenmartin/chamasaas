@@ -1,5 +1,6 @@
 from .models import db,CreditTransaction,TransactionType,Member
 from sqlalchemy import func, case
+import requests
 import calendar
 from datetime import date
 
@@ -38,4 +39,7 @@ def generate_member_id():
     else:
         new_num = 1
     return f"MBR-{new_num:06d}"
+
+
+
 

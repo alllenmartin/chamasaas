@@ -23,6 +23,7 @@ const LoanRepayments = () => {
                 const membersRes = await fetch("http://127.0.0.1:5000/api/members");
                 const membersData = await membersRes.json();
                 setMembers(membersData);
+                console.log(selectedMemberId)
 
                 // Fetch loans if a member is selected
                 if (selectedMemberId) {
@@ -56,7 +57,7 @@ const LoanRepayments = () => {
         fetchData();
     }, [selectedMemberId]);
 
-    const selectedMember = members.find((m) => m.id === selectedMemberId);
+    const selectedMember = members.find((m) => m.memberId === selectedMemberId);
     const selectedLoan = loans.find((l) => l.loanId === selectedLoanId);
 
     // Handle adding repayment
@@ -108,7 +109,7 @@ const LoanRepayments = () => {
                     >
                         <option value="">Select Member</option>
                         {members.map((m) => (
-                            <option key={m.id} value={m.id}>
+                            <option key={m.memberId} value={m.memberId}>
                                 {m.name}
                             </option>
                         ))}

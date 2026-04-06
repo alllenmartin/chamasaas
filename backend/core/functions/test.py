@@ -1,27 +1,22 @@
 import requests
-from requests.auth import HTTPBasicAuth
 
-url = "https://apisms.beem.africa/v1/send"
+url = "https://app.mobitechtechnologies.com/sms/sendsms"
 
-data = {
-    "source_addr": "BEEM",
-    "encoding": 0,
-    "message": "SMS Test from Python API",
-    "recipients": [
-        {
-            "recipient_id": 1,
-            "dest_addr": "254703622386"
-        }
-    ]
+headers = {
+    "h_api_key": "e0b77a231c87496086e5fa578977b0bb951dc52526e27697c1215e713fe9df57",
+    "Content-Type": "application/json"
 }
 
-username = "bcd91b01afb4e553"
-password = "ZTc4MzA5ZjExNWVlNzRkMWE0YWIxZTk4MGFiNzk4YzRlMTlhMGQ3MzBlZGZhNWIzN2MyNTM1MTEzYTA3YjcwNQ=="
+payload = {
+    "mobile": "+254703622384",
+    "response_type": "json",
+    "sender_name": "FULL_CIRCLE",
+    "service_id": 0,
+    "message": "This is a message.\n\nRegards\nMobitech Technologies Ltd"
+}
 
-response = requests.post(url, json=data, auth=HTTPBasicAuth(username, password))
+response = requests.post(url, headers=headers, json=payload)
 
-if response.status_code == 200:
-    print("SMS sent successfully!")
-else:
-    print("SMS sending failed. Status code:", response.status_code)
-    print("Response:", response.text)
+# Print response
+print("Status Code:", response.status_code)
+print("Response:", response.text)

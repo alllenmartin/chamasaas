@@ -94,8 +94,8 @@ class ChamaSettings(db.Model):
 #         }
 
 class Member(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    member_id = db.Column(db.String(20), unique=True, nullable=True)
+    member_id = db.Column(db.String(20), primary_key=True)
+    # member_id = db.Column(db.String(20), unique=True, nullable=True)
     first_name = db.Column(db.String(50), nullable=True)
     second_name = db.Column(db.String(50))
     last_name = db.Column(db.String(50), nullable=True)
@@ -124,7 +124,7 @@ class Member(db.Model):
 
     def to_dict(self):
         return {
-            "id": self.id,
+            
             "memberId": self.member_id,
 
             # Names
@@ -192,7 +192,7 @@ class Beneficiary(db.Model):
         
 class Contribution(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    memberId = db.Column(db.Integer, db.ForeignKey('member.id'), nullable=False)
+    memberId = db.Column(db.String(20), db.ForeignKey('member.member_id'), nullable=False)
     memberName = db.Column(db.String(100))
     month = db.Column(db.String(7))  # e.g., 2024-01
     amount = db.Column(db.Integer, nullable=False)
@@ -200,7 +200,7 @@ class Contribution(db.Model):
 
     def to_dict(self):
         return {
-            "id": self.id,
+             "id": self.memberId,
             "memberId": self.memberId,
             "memberName": self.memberName,
             "month": self.month,
@@ -250,7 +250,7 @@ class Credit(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     loan_id = db.Column(db.String(10), unique=True, nullable=False)
-    member_id = db.Column(db.Integer, db.ForeignKey("member.id"), nullable=False)
+    member_id = db.Column(db.String(20), db.ForeignKey("member.member_id"), nullable=False)
     member = relationship("Member", backref="credits", foreign_keys=[member_id])
     amount_requested = db.Column(db.Integer, nullable=False)
     interest_rate = db.Column(db.Float, nullable=False)
@@ -258,6 +258,7 @@ class Credit(db.Model):
     insurance_fee=db.Column(db.Float,default=0)
     schedule_generated = db.Column(db.Boolean, default=False)
     interest_method = db.Column(db.String(50), default="amortized")
+    guarantors = db.relationship("Guarantor", backref="loan", lazy=True)
 
     # Relationship to transactions
     transactions = db.relationship(
@@ -324,7 +325,7 @@ class Credit(db.Model):
         return {
             "loanId": self.loan_id,
             "memberId": self.member_id,
-            "memberName": self.member.name if self.member else "",
+            "memberName": self.member.first_name if self.member else "",
             "memberPhone": self.member.phone if self.member else "",
             "amountRequested": self.amount_requested,
             "interestRate": self.interest_rate,
@@ -468,3 +469,22 @@ class DailyLoansInterestBuffer(db.Model):
     product_type = db.Column(db.String(100))
     interest_amount = db.Column(db.Float)
     outstanding_balance = db.Column(db.Float)
+
+
+class Guarantor(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    loan_id = db.Column(db.String(10), db.ForeignKey('credit.loan_id'))
+    member_number = db.Column(db.String(50))
+    name = db.Column(db.String(100))
+    amount_guaranteed = db.Column(db.Float)
+    total_shares = db.Column(db.Float)
+    committed_amount = db.Column(db.Float)
+
+
+class Collateral(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    loan_id = db.Column(db.String(10), db.ForeignKey('credit.loan_id'))
+    type = db.Column(db.String(50))
+    description = db.Column(db.String(200))
+    value = db.Column(db.Float)
+    owner = db.Column(db.String(100))

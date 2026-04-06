@@ -1,6 +1,6 @@
 
 from flask import Blueprint, jsonify, request,abort
-from .models import CreditStatusEnum, db, ChamaSettings,Member,Contribution,Credit,CreditRepayment,VendorLedger,Vendor,RepaymentSchedule,CreditTransaction,TransactionType,DailyLoansInterestBuffer,Beneficiary
+from .models import CreditStatusEnum, db, ChamaSettings,Member,Contribution,Credit,CreditRepayment,VendorLedger,Vendor,RepaymentSchedule,CreditTransaction,TransactionType,DailyLoansInterestBuffer,Beneficiary,Collateral,Guarantor
 from datetime import datetime,timedelta
 from datetime import date
 import calendar
@@ -71,23 +71,23 @@ def get_members():
 #     return jsonify(member.to_dict()), 201
 
 
-from datetime import datetime
+
 
 def create_member():
     data = request.json
-    
+    print(data)
 
     try:
-        # Generate member ID
-        member_id = generate_member_id()
+        # Use frontend-provided memberId or generate one
+        member_id = data.get("memberId") or generate_member_id()
 
-        # ✅ FIX: Convert DOB properly
+        # ✅ Convert DOB properly
         dob_str = data.get("dob")
         if not dob_str:
             return jsonify({"error": "Date of birth is required"}), 400
-
         dob = datetime.strptime(dob_str, "%Y-%m-%d").date()
 
+        # Create member
         new_member = Member(
             member_id=member_id,
             first_name=data.get("firstName"),
@@ -95,7 +95,7 @@ def create_member():
             last_name=data.get("lastName"),
             national_id=data.get("nationalId"),
             gender=data.get("gender"),
-            dob=dob,  # ✅ FIXED
+            dob=dob,
             nationality=data.get("nationality"),
             county=data.get("county"),
             sub_county=data.get("subCounty"),
@@ -115,13 +115,11 @@ def create_member():
             business_location=data.get("businessLocation"),
             landmark=data.get("landmark"),
         )
-
         db.session.add(new_member)
-        db.session.flush()
+        db.session.flush()  # Ensures member_id is available for beneficiaries
 
-        # Beneficiaries
-        beneficiaries = data.get("beneficiaries", [])
-        for b in beneficiaries:
+        # Add beneficiaries
+        for b in data.get("beneficiaries", []):
             ben = Beneficiary(
                 member_id=member_id,
                 name=b.get("name"),
@@ -147,12 +145,16 @@ def create_member():
         return jsonify({"error": str(e)}), 500
 
 
+
+
 def update_member(member_id):
     data = request.get_json()
     member = Member.query.get(member_id)
     if not member:
         return jsonify({"error": "Member not found"}), 404
-    member.name = data["first_name"]
+    
+    
+    member.first_name = data["first_name"]
     member.phone = data["phone"]
     member.role = data.get("role", member.role)
     member.amountPaid = data.get("amountPaid", member.amountPaid)
@@ -193,8 +195,8 @@ def add_contribution():
         return jsonify({"error": "Member not found"}), 404
 
     contribution = Contribution(
-        memberId=member.id,
-        memberName=member.name,
+        memberId=member.member_id,
+        memberName=member.first_name,
         month=data["month"],
         amount=data["amount"],
         date=datetime.today().strftime('%d/%m/%Y')
@@ -212,24 +214,22 @@ def credit_members():
     for m in members:
         total_contribution = db.session.query(
             db.func.coalesce(db.func.sum(Contribution.amount), 0)
-        ).filter(Contribution.memberId == m.id).scalar()
+        ).filter(Contribution.memberId == m.member_id).scalar()
 
         results.append({
-            "id": m.id,
-            "name": m.name,
-            "registrationPaidAmount": m.registrationPaid,
+            "id": m.member_id,
+            "name": m.first_name,
+            "registrationPaidAmount": 1000,
             "totalContribution": total_contribution,
         })
 
     return jsonify(results), 200
 
-# def get_credits():
-#     credits = Credit.query.all()
-#     return jsonify([c.to_dict() for c in credits]), 200
+
 def get_credits():
     credits = (
         db.session.query(Credit, Member)
-        .join(Member, Credit.member_id == Member.id)
+        .join(Member, Credit.member_id == Member.member_id)
         .order_by(Credit.created_at.desc())
         .all()
     )
@@ -239,7 +239,7 @@ def get_credits():
         result.append({
             "loanId": credit.loan_id,
             "memberId": credit.member_id,
-            "memberName": member.name,  # ✅ resolved here
+            "memberName": member.first_name,  # ✅ resolved here
             "amountRequested": credit.amount_requested,
             "interestRate": credit.interest_rate,
             "installments": credit.installments,
@@ -291,6 +291,19 @@ def update_credit_status(loan_id):
 
     if credit.status == CreditStatusEnum.Completed:
         return jsonify({"error": "Completed loans cannot be edited"}), 400
+    
+    # -------------------- Check Full Guarantee --------------------
+    total_guaranteed = db.session.query(
+        db.func.sum(Guarantor.amount_guaranteed)
+    ).filter_by(loan_id=loan_id).scalar() or 0
+
+    loan_amount = float(credit.amount_requested)
+
+    if total_guaranteed < loan_amount:
+        return jsonify({
+            "error": f"Loan is not fully guaranteed ({total_guaranteed}/{loan_amount})"
+        }), 400
+    # ---------------------------------------------------------------
 
     # ✅ Handle status change (loan disbursement)
     if "status" in data:
@@ -321,7 +334,7 @@ def update_credit_status(loan_id):
         txn = CreditTransaction(
             loan_id=loan_id,
             transaction_type=TransactionType.REPAYMENT,
-            amount=normalize_amount(
+            amount=CreditTransaction.normalize_amount(
                 TransactionType.REPAYMENT,
                 amount
             )
@@ -330,10 +343,7 @@ def update_credit_status(loan_id):
 
     db.session.commit()
 
-    # ✅ Auto-close loan if fully paid
-    # if credit.outstanding_balance >= 0:
-    #     credit.status = CreditStatusEnum.Completed
-    #     db.session.commit()
+
 
     return jsonify(credit.to_dict())
 
@@ -847,38 +857,7 @@ def receive_vendor_payment(id):
     }), 200
 
 
-# def receive_vendor_payment(id):
-#     """
-#     Mark an amount as received for a vendor ledger entry
-#     Request JSON:
-#     {
-#         "amount": 100
-#     }
-#     """
-#     data = request.get_json() or {}
-#     amount = data.get("amount")
 
-#     if amount is None or amount <= 0:
-#         return jsonify({"error": "Invalid amount"}), 400
-
-#     ledger = VendorLedger.query.get(id)
-#     if not ledger:
-#         return jsonify({"error": "Ledger entry not found"}), 404
-
-#     # Calculate new received and outstanding amounts
-#     ledger.received_amount += amount
-#     ledger.outstanding_amount = max(ledger.expected_amount - ledger.received_amount, 0)
-
-#     db.session.commit()
-
-#     return jsonify({
-#         "id": ledger.id,
-#         "vendor_id": ledger.vendor_id,
-#         "month": ledger.month.isoformat(),
-#         "expected_amount": ledger.expected_amount,
-#         "received_amount": ledger.received_amount,
-#         "outstanding_amount": ledger.outstanding_amount
-#     }), 200
     
 def get_vendors():
     vendors = Vendor.query.order_by(Vendor.name.asc()).all()
@@ -974,7 +953,7 @@ def send_sms():
     return jsonify(result)
 
 def member_lookup():
-    members = Member.query.order_by(Member.name.asc()).all()
+    members = Member.query.order_by(Member.first_name.asc()).all()
     return jsonify([m.to_dict() for m in members])
 
 def get_contributions_each(member_id):
@@ -1282,6 +1261,7 @@ def post_repayment(loan_id: str, amount: float, repayment_date: date = None):
     print(f"Repayment of {amount} applied to loan {loan_id}. Remaining unapplied: {remaining}")
     return remaining
 
+
 def add_repayment():
     data = request.json
     loan_id = data.get("loanId")
@@ -1289,8 +1269,17 @@ def add_repayment():
     repayment_date = data.get("date")
     if repayment_date:
         repayment_date = date.fromisoformat(repayment_date)
+
     try:
         remaining = post_repayment(loan_id, amount, repayment_date)
+
+        # If balance is 0, mark loan as Completed
+        if remaining == 0:
+            credit = Credit.query.filter_by(loan_id=loan_id).first()
+            if credit and credit.status != CreditStatusEnum.Completed:
+                credit.status = CreditStatusEnum.Completed
+                db.session.commit()   # or commit later if you reuse the session
+
         return jsonify({
             "loanId": loan_id,
             "amount": amount,
@@ -1312,9 +1301,242 @@ def get_active_loans():
         {
             "loanId": l.loan_id,
             "memberId": l.member_id,
-            "memberName": l.member.name if l.member else "",
+            "memberName": l.member.first_name if l.member else "",
             "totalOutstanding": l.total_outstanding,
         }
         for l in loans
     ]
     return jsonify(loans_list)
+
+
+def save_collaterals():
+    data = request.json
+    loan_id = data.get('loanId')
+    collaterals = data.get('collaterals', [])
+
+    if not loan_id:
+        return jsonify({"error": "loanId is required"}), 400
+
+    for c in collaterals:
+
+     
+        if not c.get('type') or not c.get('description'):
+            return jsonify({"error": "Type and description required"}), 400
+
+        if float(c.get('value') or 0) <= 0:
+            return jsonify({"error": "Invalid collateral value"}), 400
+
+        new_c = Collateral(
+            loan_id=loan_id,
+            type=c.get('type'),
+            description=c.get('description'),
+            value=float(c.get('value') or 0),
+            owner=c.get('owner')
+        )
+
+        db.session.add(new_c)
+
+    db.session.commit()
+
+    return jsonify({"message": "Collaterals saved successfully"}), 201
+
+
+
+# def save_guarantors():
+#     data = request.json
+#     loan_id = data.get('loanId')
+#     guarantors = data.get('guarantors', [])
+
+#     for g in guarantors:
+#         member_no = g.get('memberNumber')
+
+#         # Total already committed in OTHER loans
+#         existing = db.session.query(db.func.sum(Guarantor.amount_guaranteed))\
+#             .filter(Guarantor.member_number == member_no)\
+#             .scalar() or 0
+
+#         total_shares = float(g.get('totalShares', 0))
+#         new_amount = float(g.get('amountGuaranteed', 0))
+
+#         if existing + new_amount > total_shares:
+#             return jsonify({
+#                 "error": f"{member_no} exceeds available shares"
+#             }), 400
+
+#         new_g = Guarantor(
+#             loan_id=loan_id,
+#             member_number=member_no,
+#             name=g.get('name'),
+#             amount_guaranteed=new_amount,
+#             total_shares=total_shares,
+#             committed_amount=g.get('committedAmount')
+#         )
+
+#         db.session.add(new_g)
+
+#     db.session.commit()
+
+#     return jsonify({"message": "Saved successfully"}), 201
+
+def save_guarantors():
+    data = request.json
+    loan_id = data.get('loanId')
+    guarantors = data.get('guarantors', [])
+    
+
+
+    # If loanId is a dict, extract actual memberId or loan string
+    if isinstance(loan_id, dict):
+        loan_id = loan_id.get("memberId")  # adjust key to match your frontend
+    else:
+        loan_id = str(loan_id)
+
+    # Fetch loan requested amount
+    loan = Credit.query.filter_by(loan_id=loan_id).first()
+    if not loan:
+        return jsonify({"error": "Loan not found"}), 404
+
+    loan_amount = float(loan.amount_requested)
+
+    # Sum of amounts being saved for this loan
+    total_new_guarantee = sum(float(g.get('amountGuaranteed', 0)) for g in guarantors)
+    if total_new_guarantee > loan_amount:
+        return jsonify({"error": "Total guaranteed exceeds loan requested amount"}), 400
+
+    # Check each guarantor for available shares
+    for g in guarantors:
+        member_no = g.get('memberNumber')
+        total_shares = float(g.get('totalShares', 0))
+        new_amount = float(g.get('amountGuaranteed', 0))
+
+        # Total already committed in other loans
+        existing = db.session.query(db.func.sum(Guarantor.amount_guaranteed))\
+            .filter(
+                Guarantor.member_number == member_no,
+                Guarantor.loan_id != loan_id  # exclude current loan
+            ).scalar() or 0
+
+        available = total_shares - existing
+        if new_amount > available:
+            return jsonify({
+                "error": f"{member_no} exceeds available shares for guarantorship"
+            }), 400
+            
+        existing_committed = db.session.query(db.func.sum(Guarantor.amount_guaranteed)).filter(Guarantor.member_number == member_no,
+            Guarantor.loan_id != loan_id).scalar() or 0
+
+        new_amount = float(g.get('amountGuaranteed', 0))
+
+        committed_amount = existing_committed + new_amount
+            
+            
+    
+
+    # All checks passed, save guarantors
+    for g in guarantors:
+        new_g = Guarantor(
+            loan_id=loan_id,
+            member_number=g.get('memberNumber'),
+            name=g.get('name'),
+            amount_guaranteed=float(g.get('amountGuaranteed', 0)),
+            total_shares=float(g.get('totalShares', 0)),
+            committed_amount=committed_amount,
+        )
+        db.session.add(new_g)
+
+    db.session.commit()
+    return jsonify({"message": "Saved successfully"}), 201
+
+def get_all_security(loan_id):
+    if isinstance(loan_id, dict):
+        loan_id = loan_id.get("memberId")
+        
+   
+        
+    loan = Credit.query.filter_by(loan_id=loan_id).first()
+    
+    if not loan:
+     return jsonify({"error": "Loan not found"}), 404
+
+    guarantors = Guarantor.query.filter_by(loan_id=loan.loan_id).all()
+    collaterals = Collateral.query.filter_by(loan_id=loan.loan_id).all()
+
+    return jsonify({
+        "guarantors": [
+            {
+                "memberNumber": g.member_number,
+                "name": g.name,
+                "amountGuaranteed": g.amount_guaranteed,
+                "totalShares": g.total_shares,
+                "committedAmount": g.committed_amount,
+                "availableForGuarantee":g.total_shares-g.committed_amount,
+            }
+            for g in guarantors
+        ],
+        "collaterals": [
+            {
+                "type": c.type,
+                "description": c.description,
+                "value": c.value,
+                "owner": c.owner
+            }
+            for c in collaterals
+        ]
+    })
+
+
+def security_status(loan_id):
+    loan =  Credit.query.filter_by(loan_id=loan_id).first()
+
+    guarantors = Guarantor.query.filter_by(loan_id=loan_id).all()
+    collaterals = Collateral.query.filter_by(loan_id=loan_id).all()
+
+    total_guaranteed = sum(g.amount_guaranteed for g in guarantors)
+    total_collateral = sum(c.value for c in collaterals)
+
+    total_security = total_guaranteed + total_collateral
+
+    coverage = (total_security / loan.amount_requested) * 100 if loan.amount_requested else 0
+
+    return jsonify({
+        "loanAmount": loan.amount_requested,
+        "totalGuaranteed": total_guaranteed,
+        "totalCollateral": total_collateral,
+        "totalSecurity": total_security,
+        "coveragePercent": round(coverage, 2),
+        "isFullySecured": total_security >= loan.amount_requested
+    })
+
+
+
+def current_member_commitment(member_id):
+    # Get member
+    member = Member.query.get(member_id)
+    if not member:
+        return jsonify({"error": "Member not found"}), 404
+
+    # Calculate total savings from contributions table
+    contributions = Contribution.query.filter_by(memberId=member_id).all()
+    total_savings = sum([c.amount for c in contributions])
+
+    # Get all loans where member is a guarantor
+    guarantors = Guarantor.query.filter_by(member_number=member_id).all()
+
+    total_commitment = 0
+    for g in guarantors:
+        loan =  Credit.query.filter_by(loan_id=g.loan_id).first()
+        if not loan:
+            continue
+
+        total_guaranteed_for_loan = sum([x.amount_guaranteed for x in loan.guarantors])
+        if total_guaranteed_for_loan > 0:
+            committed = (g.amount_guaranteed / total_guaranteed_for_loan) * loan.outstanding_balance
+            total_commitment += committed
+
+    available_for_guarantee = max(total_savings - total_commitment, 0)
+
+    return jsonify({
+        "totalSavings": total_savings,
+        "totalCommitment": total_commitment,
+        "availableForGuarantee": available_for_guarantee
+    })

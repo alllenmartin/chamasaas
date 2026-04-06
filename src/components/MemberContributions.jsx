@@ -78,7 +78,7 @@ useEffect(() => {
     fetchData();
   }, []);
 
-  const selectedMember = members.find((m) => m.id === selectedMemberId);
+  const selectedMember = members.find((m) => m.memberId === selectedMemberId);
 
   /* ======================
      ADD CONTRIBUTION
@@ -298,20 +298,20 @@ useEffect(() => {
 
         {!viewAll && (
           <div style={{ marginBottom: "12px" }}>
-            <select
-              value={selectedMemberId}
-              onChange={(e) => setSelectedMemberId(e.target.value)}
-            >
-              <option value="">Select Member</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}{" "}
-                  {m.registrationPaidAmount < registrationFee
-                    ? "(Registration Pending)"
-                    : ""}
-                </option>
-              ))}
-            </select>
+           <select
+  value={selectedMemberId}
+  onChange={(e) => setSelectedMemberId(e.target.value)}
+>
+  <option value="">Select Member</option>
+  {members.map((m) => (
+    <option key={m.memberId} value={m.memberId}>
+      {m.name}{" "}
+      {m.registrationPaidAmount < registrationFee
+        ? "(Registration Pending)"
+        : ""}
+    </option>
+  ))}
+</select>
           </div>
         )}
 

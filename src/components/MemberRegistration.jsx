@@ -139,7 +139,7 @@ const MemberRegistration = () => {
   //   alert("Member saved successfully! Check console for data.");
   // };
 
-  const saveMember = async () => {
+  const                                                                                                                                                      saveMember = async () => {
     const data = { ...formData, beneficiaries };
     setLoading(true); // show spinner / disable button
 

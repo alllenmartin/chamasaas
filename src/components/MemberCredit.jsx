@@ -116,12 +116,16 @@ const MemberCredit = () => {
 
   const selectedMember = members.find((m) => m.id === selectedMemberId);
 
+ 
+
   const isRegistered =
     selectedMember?.registrationPaidAmount >= registrationFee;
 
   const qualifiedAmount = selectedMember
     ? selectedMember.totalContribution * CREDIT_MULTIPLIER
     : 0;
+
+    console.log(isRegistered)
 
   // Automatically fetch member loans when member changes
   useEffect(() => {
@@ -226,6 +230,7 @@ const MemberCredit = () => {
           <select
             value={selectedMemberId}
             onChange={(e) => setSelectedMemberId(e.target.value)}
+            // onChange={(e) => setSelectedMemberId(Number(e.target.value))}-
           >
             <option value="">Select Member</option>
             {members.map((m) => (

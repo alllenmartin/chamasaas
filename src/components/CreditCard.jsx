@@ -50,27 +50,35 @@ const CreditCard = () => {
 
   const isPending = status === "Pending";
 
-  const handleSave = async () => {
-    if (!loan) return;
-    setLoading(true);
-    try {
-      await fetch(`http://127.0.0.1:5000/api/credit/${loanId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status,
-          installments: Number(installments),
-          interestMethod: calcMethod,
-        }),
-      });
-      toast.success("Loan updated successfully");
-    } catch {
-      toast.error("Failed to save loan");
-    } finally {
-      setLoading(false);
-    }
-  };
+ const handleSave = async () => {
+  if (!loan) return;
+  setLoading(true);
 
+  try {
+    const res = await fetch(`http://127.0.0.1:5000/api/credit/${loanId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status,
+        installments: Number(installments),
+        interestMethod: calcMethod,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      toast.error(err.error || "Failed to update loan");
+      return;
+    }
+
+    toast.success("Loan updated successfully");
+  } catch (error) {
+    console.error(error);
+    toast.error("Network error while saving loan");
+  } finally {
+    setLoading(false);
+  }
+};
   if (!loan) return <p>Loading...</p>;
 
   return (

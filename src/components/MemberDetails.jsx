@@ -19,7 +19,7 @@ const MemberDetails = () => {
         const res = await fetch(`http://127.0.0.1:5000/api/members`);
         if (!res.ok) throw new Error("Failed to fetch members");
         const data = await res.json();
-        const memberData = data.find((m) => m.id === Number(id));
+        const memberData = data.find((m) => m.member_id === m.member_id);
         if (!memberData) {
           toast.error("Member not found");
         }

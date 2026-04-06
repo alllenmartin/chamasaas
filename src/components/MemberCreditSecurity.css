@@ -1,97 +1,77 @@
-.main-content {
-  padding: 24px;
-  min-height: 100vh;
-  margin-left: 260px; /* space for sidebar */
-  background: var(--bg);
-}
-
-.security-summary {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.summary-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px;
-  flex: 1;
-  text-align: center;
-  cursor: default;
-  transition: all 0.2s ease;
-}
-
-.summary-card.clickable:hover {
-  background: var(--primary);
-  color: white;
-  transform: translateY(-2px);
-}
-
+/* Container */
 .table-container {
-  margin-top: 16px;
-  background: var(--card);
-  padding: 16px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
+  margin-top: 20px;
+  margin-bottom: 40px;
+  overflow-x: auto; /* Horizontal scroll if table too wide */
+  background: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
+/* Table styling */
 .security-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 12px;
+  table-layout: fixed; /* prevent columns from stretching weirdly */
 }
 
 .security-table th,
 .security-table td {
-  padding: 10px;
-  border-bottom: 1px solid var(--border);
+  padding: 10px 8px;
+  border: 1px solid #ddd;
   text-align: left;
+  word-wrap: break-word; /* wrap long text */
 }
 
-.security-table th {
-  background: #f3f4f6;
-  font-weight: 600;
-}
-
+/* Add entry form */
 .add-entry-form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px;
-  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap; /* allow inputs to wrap instead of overlapping */
+  gap: 10px; /* spacing between inputs */
+  margin-top: 15px;
 }
 
-.add-entry-form input {
-  padding: 8px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-}
-
+.add-entry-form input,
+.add-entry-form select,
 .add-entry-form button {
-  grid-column: 1 / -1;
-  justify-self: start;
-  background: var(--primary);
+  flex: 1 1 150px; /* inputs resize but have minimum width */
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Buttons */
+.view-btn, .remove-btn, .save-btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  background-color: #2563eb;
   color: white;
-  border-radius: 6px;
-  padding: 8px 14px;
   cursor: pointer;
-  transition: background 0.2s ease;
 }
 
-.add-entry-form button:hover {
-  background: var(--primary-hover);
+.view-btn:hover, .remove-btn:hover, .save-btn:hover {
+  background-color: #1d4ed8;
 }
 
-.remove-btn {
-  background: var(--danger);
-  color: white;
-  padding: 6px 10px;
-  border-radius: 6px;
+/* Summary cards */
+.security-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.summary-card {
+  flex: 1 1 200px;
+  padding: 15px;
+  background: #f3f4f6;
+  border-radius: 8px;
+  text-align: center;
   cursor: pointer;
-  transition: background 0.2s ease;
 }
 
-.remove-btn:hover {
-  background: var(--danger-hover);
+.summary-card h4 {
+  margin-bottom: 10px;
 }
-
