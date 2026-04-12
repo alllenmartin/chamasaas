@@ -1,6 +1,6 @@
 
 from flask import Blueprint, jsonify, request,abort
-from .models import CreditStatusEnum, db, ChamaSettings,Member,Contribution,Credit,CreditRepayment,VendorLedger,Vendor,RepaymentSchedule,CreditTransaction,TransactionType,DailyLoansInterestBuffer,Beneficiary,Collateral,Guarantor
+from .models import CreditStatusEnum,AccountType,LedgerEntry,db,Account, ChamaSettings,Member,Contribution,Credit,CreditRepayment,VendorLedger,Vendor,RepaymentSchedule,CreditTransaction,TransactionType,DailyLoansInterestBuffer,Beneficiary,Collateral,Guarantor
 from datetime import datetime,timedelta
 from datetime import date
 import calendar
@@ -11,6 +11,7 @@ from dateutil.relativedelta import relativedelta
 import math
 from sqlalchemy import func, case
 from .utils import get_days_in_year, get_principal_balance_as_at,generate_member_id
+from sqlalchemy.exc import IntegrityError
 
 
 
@@ -311,19 +312,45 @@ def update_credit_status(loan_id):
 
         
 
-        # Detect disbursement moment
-        if credit.status == CreditStatusEnum.Pending:
-            txn = CreditTransaction(
-                loan_id=loan_id,
-                transaction_type=TransactionType.LOAN,
-                amount=CreditTransaction.normalize_amount(
-                    TransactionType.LOAN,
-                    credit.amount_requested
-                )
-            )
-            db.session.add(txn)
+    # Detect disbursement moment
+    if credit.status == CreditStatusEnum.Pending:
+    
+        loan_amount = float(credit.amount_requested)
 
-            print(txn)
+        principal_account = Account.query.filter_by(name="Priciple Receivable").first()
+        cash_account = Account.query.filter_by(name="Cash").first()
+
+        # -------------------- DEBIT: Principal Receivable --------------------
+        db.session.add(LedgerEntry(
+            account_id=principal_account.id,
+            account_code=principal_account.code,
+            debit=loan_amount,
+            credit=0,
+            description=f"Loan disbursement - {credit.loan_id}",
+            document_no=str(loan_id)
+        ))
+
+        # -------------------- CREDIT: Cash/Bank --------------------
+        db.session.add(LedgerEntry(
+            account_id=cash_account.id,
+            account_code=cash_account.code,
+            debit=0,
+            credit=loan_amount,
+            description=f"Loan disbursement - {credit.loan_id}",
+            document_no=str(loan_id)
+        ))
+
+        # -------------------- Credit Transaction --------------------
+        txn = CreditTransaction(
+            loan_id=loan_id,
+            transaction_type=TransactionType.LOAN,
+            amount=CreditTransaction.normalize_amount(
+                TransactionType.LOAN,
+                credit.amount_requested
+            )
+        )
+
+        db.session.add(txn)
 
         credit.status = CreditStatusEnum.Active
 
@@ -519,17 +546,6 @@ def generate_schedule(loan_id):
     }), 201
     
 def pay_repayments():
-    """
-    Marks one or multiple repayments as paid (supports partial payments).
-    Interest is paid first, then principal.
-    Request JSON:
-    {
-        "repayments": [
-            {"id": 1, "amount": 5000},
-            {"id": 2}  # defaults to full amount
-        ]
-    }
-    """
     data = request.get_json() or {}
     repayments_list = data.get("repayments")
 
@@ -1220,6 +1236,8 @@ def post_monthly_interest(as_at_date=None):
 
 
 
+
+
 def post_repayment(loan_id: str, amount: float, repayment_date: date = None):
        
     repayment_date = repayment_date or date.today()
@@ -1229,36 +1247,98 @@ def post_repayment(loan_id: str, amount: float, repayment_date: date = None):
 
     remaining = amount
 
-    # Helper to apply payment to a specific type
-    def apply_payment(transaction_type, outstanding):
+    cash_account = Account.query.filter_by(name="Cash").first()
+    principal_account = Account.query.filter_by(name="Priciple Receivable").first()
+
+    interest_account = Account.query.filter_by(name="Loan Interest Income").first()
+    penalty_account = Account.query.filter_by(name="Loan Interest Income").first()
+    insurance_account = Account.query.filter_by(name="Loan Interest Income").first()
+
+    def apply_payment(transaction_type, outstanding, income_account=None):
         nonlocal remaining
         pay = min(outstanding, remaining)
+
         if pay > 0:
+            # ---------------- CREDIT TRANSACTION (existing logic) ----------------
             transaction = CreditTransaction(
                 loan_id=loan_id,
                 transaction_type=transaction_type,
-                amount=-pay,  # repayment is negative in your normalize_amount
+                amount=-pay,
                 created_at=repayment_date
             )
             db.session.add(transaction)
+
+            # ---------------- LEDGER POSTING ----------------
+            # 1. Cash increases (DEBIT)
+            db.session.add(LedgerEntry(
+                account_id=cash_account.id,
+                account_code=cash_account.code,
+                debit=pay,
+                credit=0,
+                description=f"Loan repayment - {transaction_type}",
+                document_no=str(loan_id)
+            ))
+
+            # 2. Depending on type
+            if transaction_type == TransactionType.REPAYMENT:
+                # Principal reduction (CREDIT)
+                db.session.add(LedgerEntry(
+                    account_id=principal_account.id,
+                    account_code=principal_account.code,
+                    debit=0,
+                    credit=pay,
+                    description="Principal repayment",
+                    document_no=str(loan_id)
+                ))
+
+            elif transaction_type == TransactionType.INTEREST_DUE:
+                db.session.add(LedgerEntry(
+                    account_id=interest_account.id,
+                    account_code=interest_account.code,
+                    debit=0,
+                    credit=pay,
+                    description="Interest income",
+                    document_no=str(loan_id)
+                ))
+
+            elif transaction_type == TransactionType.PENALTY_DUE:
+                db.session.add(LedgerEntry(
+                    account_id=penalty_account.id,
+                    account_code=penalty_account.code,
+                    debit=0,
+                    credit=pay,
+                    description="Penalty income",
+                    document_no=str(loan_id)
+                ))
+
+            elif transaction_type == TransactionType.INSURANCE_DUE:
+                db.session.add(LedgerEntry(
+                    account_id=insurance_account.id,
+                    account_code=insurance_account.code,
+                    debit=0,
+                    credit=pay,
+                    description="Insurance income",
+                    document_no=str(loan_id)
+                ))
+
             remaining -= pay
+
         return remaining
 
-    # 1️ Pay Interest first
+    # 1️⃣ Interest
     remaining = apply_payment(TransactionType.INTEREST_DUE, loan.outstanding_interest)
 
-    # 2️ Pay Penalty
+    # 2️⃣ Penalty
     remaining = apply_payment(TransactionType.PENALTY_DUE, loan.outstanding_penalty)
 
-    # 3️ Pay Insurance
+    # 3️⃣ Insurance
     remaining = apply_payment(TransactionType.INSURANCE_DUE, loan.outstanding_insurance)
 
-    # 4️ Remaining reduces principal
+    # 4️⃣ Principal
     remaining = apply_payment(TransactionType.REPAYMENT, loan.outstanding_balance)
 
     db.session.commit()
 
-    print(f"Repayment of {amount} applied to loan {loan_id}. Remaining unapplied: {remaining}")
     return remaining
 
 
@@ -1342,41 +1422,7 @@ def save_collaterals():
 
 
 
-# def save_guarantors():
-#     data = request.json
-#     loan_id = data.get('loanId')
-#     guarantors = data.get('guarantors', [])
 
-#     for g in guarantors:
-#         member_no = g.get('memberNumber')
-
-#         # Total already committed in OTHER loans
-#         existing = db.session.query(db.func.sum(Guarantor.amount_guaranteed))\
-#             .filter(Guarantor.member_number == member_no)\
-#             .scalar() or 0
-
-#         total_shares = float(g.get('totalShares', 0))
-#         new_amount = float(g.get('amountGuaranteed', 0))
-
-#         if existing + new_amount > total_shares:
-#             return jsonify({
-#                 "error": f"{member_no} exceeds available shares"
-#             }), 400
-
-#         new_g = Guarantor(
-#             loan_id=loan_id,
-#             member_number=member_no,
-#             name=g.get('name'),
-#             amount_guaranteed=new_amount,
-#             total_shares=total_shares,
-#             committed_amount=g.get('committedAmount')
-#         )
-
-#         db.session.add(new_g)
-
-#     db.session.commit()
-
-#     return jsonify({"message": "Saved successfully"}), 201
 
 def save_guarantors():
     data = request.json
@@ -1540,3 +1586,125 @@ def current_member_commitment(member_id):
         "totalCommitment": total_commitment,
         "availableForGuarantee": available_for_guarantee
     })
+    
+# Chat of Accounts
+def create_account():
+    data = request.get_json()
+    
+    try:
+
+        # Required fields
+        if not data.get("code") or not data.get("name") or not data.get("type"):
+            return jsonify({"error": "code, name, type are required"}), 400
+
+        # Prevent duplicate codes
+        existing = Account.query.filter_by(code=data["code"]).first()
+        if existing:
+            return jsonify({"error": "Account code already exists"}), 400
+
+        # Validate account type
+        print("TYPE RECEIVED:", data["type"])
+        print("AVAILABLE:", list(AccountType))
+        try:
+            account_type = AccountType(data["type"])
+        except ValueError:
+            return jsonify({"error": "Invalid account type"}), 400
+
+        # Handle parent account (IMPORTANT)
+        parent = None
+        if data.get("parent_code"):
+            parent = Account.query.filter_by(code=data["parent_code"]).first()
+
+            if not parent:
+                return jsonify({"error": "Parent account not found"}), 400
+
+        account = Account(
+            code=data["code"],
+            name=data["name"],
+            type=account_type,
+            parent_id=parent.id if parent else None,
+
+            # IMPORTANT RULE
+            is_postable=data.get("is_postable", True)
+        )
+
+        db.session.add(account)
+        db.session.commit()
+
+        return jsonify({
+            "message": "Account created",
+            "id": account.id
+        }), 201
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Account code already exists"}), 400
+
+
+
+def get_accounts():
+    accounts = Account.query.all()
+
+    result = []
+
+    for a in accounts:
+
+        balance = db.session.query(
+            func.coalesce(func.sum(LedgerEntry.debit), 0) -
+            func.coalesce(func.sum(LedgerEntry.credit), 0)
+        ).filter(LedgerEntry.account_id == a.id).scalar()
+
+        result.append({
+            "id": a.id,
+            "code": a.code,
+            "name": a.name,
+            "type": a.type.value,
+            "parent_id": a.parent_id,
+            "is_postable": a.is_postable,
+            "balance": float(balance)
+        })
+
+    return jsonify(result)
+
+def get_account(id):
+    account = Account.query.get_or_404(id)
+
+    return jsonify({
+        "id": account.id,
+        "code": account.code,
+        "name": account.name,
+        "type": account.type.value,
+        "parent_id":account.parent_id,
+    })
+
+
+def update_account(id):
+    account = Account.query.get_or_404(id)
+    data = request.get_json()
+
+    if "code" in data:
+        account.code = data["code"]
+
+    if "name" in data:
+        account.name = data["name"]
+
+    if "type" in data:
+        try:
+            account.type = AccountType(data["type"])
+        except ValueError:
+            return jsonify({"error": "Invalid account type"}), 400
+
+    db.session.commit()
+
+    return jsonify({"message": "Account updated"})
+
+
+
+def delete_account(id):
+    account = Account.query.get_or_404(id)
+
+    db.session.delete(account)
+    db.session.commit()
+
+    return jsonify({"message": "Account deleted"})
+
+

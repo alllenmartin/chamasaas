@@ -19,6 +19,7 @@ import MemberDetails from "./components/MemberDetails";
 import MemberRegistration from "./components/MemberRegistration";
 import ProductSetup from "./pages/ProductSetup";
 import LoanRepayment from "./components/LoanRepayment";
+import Accounts from "./components/Accounts";
 
 
 const App = () => {
@@ -49,6 +50,7 @@ const App = () => {
       <Route path="/vendors/ledger"  element={ <ProtectedRoute>  <VendorLedger /> </ProtectedRoute> }/>
       {/* Optional: protect registration (admin only later) */}
       <Route path="/register"  element={  <ProtectedRoute>   <UserRegister />  </ProtectedRoute>} />
+      <Route path="/coa"  element={  <ProtectedRoute>   <Accounts />  </ProtectedRoute>} />
     </Routes>
   );
 };

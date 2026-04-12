@@ -26,6 +26,16 @@ class OrganizationTypeEnum(enum.Enum):
     Savings = "Savings"
     Credit = "Credit"
     Both = "Both"
+    
+# Account Type
+class AccountType(enum.Enum):
+    Asset = "Asset"
+    Liability = "Liability"
+    Income = "Income"
+    Expense = "Expense"
+    Equity = "Equity"
+
+
 
 #Transaction Type
 class TransactionType(enum.Enum):
@@ -71,27 +81,7 @@ class ChamaSettings(db.Model):
         }
         
         
-# Member model
-# class Member(db.Model):
-#     __tablename__ = "member" 
-#     id = db.Column(db.String(8), primary_key=True)  # ID number
-#     name = db.Column(db.String(100), nullable=False)
-#     phone = db.Column(db.String(15), nullable=False)
-#     role = db.Column(db.String(20), default="Member")
-#     amountPaid = db.Column(db.Integer, default=0)
-#     status = db.Column(db.String(10), default="Unpaid")
-#     registrationPaid = db.Column(db.Boolean, default=False)
 
-#     def to_dict(self):
-#         return {
-#             "id": self.id,
-#             "name": self.name,
-#             "phone": self.phone,
-#             "role": self.role,
-#             "amountPaid": self.amountPaid,
-#             "status": self.status,
-#             "registrationPaid": self.registrationPaid,
-#         }
 
 class Member(db.Model):
     member_id = db.Column(db.String(20), primary_key=True)
@@ -120,6 +110,7 @@ class Member(db.Model):
     business_name = db.Column(db.String(50))
     business_location = db.Column(db.String(50))
     landmark = db.Column(db.String(50))
+    area_code = db.Column(db.String(50))
     created_at = db.Column(db.Date, default=date.today)
 
     def to_dict(self):
@@ -488,3 +479,45 @@ class Collateral(db.Model):
     description = db.Column(db.String(200))
     value = db.Column(db.Float)
     owner = db.Column(db.String(100))
+    
+class Account(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(10), unique=True, nullable=False)
+    name = db.Column(db.String(100))
+    type = db.Column(db.Enum(AccountType), nullable=False)
+    parent_id = db.Column(db.Integer, db.ForeignKey("account.id"))
+    is_postable = db.Column(db.Boolean, default=True)
+    
+
+class AuditLog(db.Model):
+    __tablename__ = "audit_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, nullable=False)
+    action = db.Column(db.String(50), nullable=False)
+    entity = db.Column(db.String(50), nullable=False)
+    entity_id = db.Column(db.String(50), nullable=True)
+    changes = db.Column(db.JSON)  
+    snapshot = db.Column(db.JSON) 
+    ip_address = db.Column(db.String(50), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.DateTime, default=datetime.utcnow)
+    
+
+
+class LedgerEntry(db.Model):
+    __tablename__ = "ledger_entries"
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer,db.ForeignKey("account.id"),nullable=False)
+    account_code = db.Column(db.String(20))
+    # Amount moved
+    debit = db.Column(db.Float, default=0)
+    credit = db.Column(db.Float, default=0)
+    description = db.Column(db.String(255))
+    document_no = db.Column(db.String(50))  # e.g receipt no, loan id
+    transaction_date = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime,default=datetime.utcnow)
+    # Relationship (optional but useful)
+    account = db.relationship("Account", backref="ledger_entries")
+
+

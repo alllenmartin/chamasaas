@@ -1,0 +1,172 @@
+.dashboard {
+  display: flex;
+  min-height: 100vh;
+  background: #f6f8fb;
+  font-family: Arial, sans-serif;
+}
+
+/* MAIN AREA */
+.main-content {
+  flex: 1;
+  padding: 20px;
+}
+
+/* HEADER */
+.header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.header p {
+  margin-top: 5px;
+  color: #666;
+}
+
+/* ---------------- FORM ---------------- */
+.account-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  margin: 15px 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.account-form input,
+.account-form select {
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  min-width: 180px;
+  outline: none;
+}
+
+.account-form input:focus,
+.account-form select:focus {
+  border-color: #4f46e5;
+}
+
+/* checkbox */
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+/* button */
+.account-form button {
+  background: #4f46e5;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.account-form button:hover {
+  background: #4338ca;
+}
+
+/* ---------------- TABLE ---------------- */
+.accounts-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.accounts-table th {
+  text-align: left;
+  background: #f1f5f9;
+  padding: 12px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.accounts-table td {
+  padding: 12px;
+  border-top: 1px solid #eee;
+  font-size: 14px;
+}
+
+/* ---------------- COA INDENTATION MAGIC ---------------- */
+
+/* Parent (non-postable accounts) */
+.coa-parent {
+  font-weight: bold;
+  background: #f8fafc;
+}
+
+/* Child (postable accounts) */
+.coa-child td:first-child {
+  padding-left: 30px; /* 👈 INDENTATION */
+  color: #333;
+}
+
+/* deeper hierarchy (optional future use) */
+.coa-level-2 td:first-child {
+  padding-left: 50px;
+}
+
+.coa-level-3 td:first-child {
+  padding-left: 70px;
+  color: #555;
+}
+
+/* ---------------- ACTION BUTTONS ---------------- */
+.accounts-table button {
+  margin-right: 5px;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.accounts-table button:first-child {
+  background: #10b981;
+  color: white;
+}
+
+.accounts-table button:last-child {
+  background: #ef4444;
+  color: white;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* make checkbox consistent size */
+.checkbox-label input {
+  width: 16px;
+  height: 16px;
+  accent-color: #4f46e5;
+}
+
+/* ---------------- LOADING ---------------- */
+.loading {
+  margin: 10px 0;
+  color: #666;
+}
