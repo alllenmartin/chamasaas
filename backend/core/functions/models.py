@@ -487,6 +487,11 @@ class Account(db.Model):
     type = db.Column(db.Enum(AccountType), nullable=False)
     parent_id = db.Column(db.Integer, db.ForeignKey("account.id"))
     is_postable = db.Column(db.Boolean, default=True)
+    children = db.relationship(
+    "Account",
+    backref=db.backref("parent", remote_side=[id]),
+    lazy="selectin"
+    )
     
 
 class AuditLog(db.Model):

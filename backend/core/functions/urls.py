@@ -3,7 +3,7 @@ from flask import request,jsonify
 from flask_cors import cross_origin
 from app import app
 from datetime import date
-from .controller import add_repayment,delete_account,update_account,get_accounts,get_account,create_account,create_member, calculate_daily_interest_for_month,current_member_commitment,get_all_security,security_status,save_guarantors,save_collaterals,get_active_loans,calculate_daily_interest_for_today, save_schedule,new_generate_schedule,get_contributions_each,member_lookup,get_settings,send_sms,update_settings,get_members,update_member,delete_member,get_contributions,add_contribution,request_credit,get_credits,credit_members,update_credit_status,get_credit,generate_schedule,get_schedule,mark_paid,get_vendor_ledger,receive_vendor_payment,get_vendors,create_vendor,delete_vendor,update_vendor,get_contributions_monthly,get_repayment_schedule
+from .controller import add_repayment,delete_account,update_account,get_accounts,get_account,create_account,create_member,run_post_monthly_interest,run_monthly_interest_calculation, calculate_daily_interest_for_month,current_member_commitment,get_all_security,security_status,save_guarantors,save_collaterals,get_active_loans,calculate_daily_interest_for_today, save_schedule,new_generate_schedule,get_contributions_each,member_lookup,get_settings,send_sms,update_settings,get_members,update_member,delete_member,get_contributions,add_contribution,request_credit,get_credits,credit_members,update_credit_status,get_credit,generate_schedule,get_schedule,mark_paid,get_vendor_ledger,receive_vendor_payment,get_vendors,create_vendor,delete_vendor,update_vendor,get_contributions_monthly,get_repayment_schedule
 from .mpesa_flow import get_mpesa_transactions,initiate_MPESA_push
 
 @app.route("/api/settings", methods=['GET','POST'])
@@ -226,3 +226,19 @@ def update_coa(id):
 @cross_origin()
 def delete_coa(id):
     if request.method == 'DELETE': return delete_account(id)
+    
+    
+    
+# Test
+@app.route("/api/interest/post-monthly", methods=["POST"])
+@cross_origin()
+def test1():
+    if request.method == 'POST': return run_post_monthly_interest()
+
+  
+@app.route("/api/interest/calculate-month", methods=["POST"])
+@cross_origin()
+def test():
+    if request.method == 'POST': return run_monthly_interest_calculation()
+    
+    

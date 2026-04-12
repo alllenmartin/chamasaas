@@ -317,8 +317,8 @@ def update_credit_status(loan_id):
     
         loan_amount = float(credit.amount_requested)
 
-        principal_account = Account.query.filter_by(name="Priciple Receivable").first()
-        cash_account = Account.query.filter_by(name="Cash").first()
+        principal_account = Account.query.filter_by(name="Principal Loans Receivable").first()
+        cash_account = Account.query.filter_by(name="Bank").first()
 
         # -------------------- DEBIT: Principal Receivable --------------------
         db.session.add(LedgerEntry(
@@ -1148,8 +1148,10 @@ def calculate_daily_interest_for_month(run_date: date):
     end_of_month = run_date
 
     active_loans = Credit.query.filter_by(status=CreditStatusEnum.Active).all()
+    
 
     for loan in active_loans:
+        
         interest_rate = loan.interest_rate / 100  # convert % to decimal
 
         current_date = start_of_month
@@ -1168,8 +1170,11 @@ def calculate_daily_interest_for_month(run_date: date):
 
             # Get yesterday's balance
             prev_date = current_date - timedelta(days=1)
+           
 
             ob = get_principal_balance_as_at(loan.loan_id, prev_date)
+            print('Found',ob)
+
 
             if ob <= 0:
                 current_date += timedelta(days=1)
@@ -1178,7 +1183,7 @@ def calculate_daily_interest_for_month(run_date: date):
             diy = get_days_in_year(current_date)
 
             interest_amount = round((ob * interest_rate) / diy, 2)
-
+            
             buffer = DailyLoansInterestBuffer(
                 loan_id=loan.loan_id,
                 interest_date=current_date,
@@ -1192,17 +1197,103 @@ def calculate_daily_interest_for_month(run_date: date):
             current_date += timedelta(days=1)
 
     db.session.commit()
+    
+# Test
+def run_monthly_interest_calculation():
+
+    data = request.get_json()
+
+    if not data or "run_date" not in data:
+        return jsonify({"error": "run_date is required (YYYY-MM-DD)"}), 400
+
+    try:
+        run_date = datetime.strptime(data["run_date"], "%Y-%m-%d").date()
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD"}), 400
+
+    calculate_daily_interest_for_month(run_date)
+
+    return jsonify({
+        "message": "Interest calculation completed",
+        "run_date": str(run_date)
+    }), 200
+    
+    
+def run_post_monthly_interest():
+
+    data = request.get_json()
+
+    # Optional: allow passing date, otherwise use today
+    if data and "as_at_date" in data:
+        try:
+            as_at_date = datetime.strptime(data["as_at_date"], "%Y-%m-%d").date()
+        except ValueError:
+            return jsonify({"error": "Invalid date format. Use YYYY-MM-DD"}), 400
+    else:
+        as_at_date = date.today()
+
+    try:
+        post_monthly_interest(as_at_date)
+
+        return jsonify({
+            "message": "Monthly interest posted successfully",
+            "as_at_date": str(as_at_date)
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "error": str(e)
+        }), 500
+        
+# End Tesr
 
 
+
+# def post_monthly_interest(as_at_date=None):
+
+#     today = as_at_date or date.today()
+#     start_of_month = today.replace(day=1)
+
+#     results = db.session.query(
+#         DailyLoansInterestBuffer.loan_id,
+#         func.sum(DailyLoansInterestBuffer.interest_amount)
+#     ).filter(
+#         DailyLoansInterestBuffer.interest_date >= start_of_month,
+#         DailyLoansInterestBuffer.interest_date <= today
+#     ).group_by(
+#         DailyLoansInterestBuffer.loan_id
+#     ).all()
+
+#     for loan_id, total_interest in results:
+#         # Check if we already posted to avoid duplicates
+#         existing = CreditTransaction.query.filter_by(
+#             loan_id=loan_id,
+#             transaction_type="INTEREST_DUE",
+#             created_at=today
+#         ).first()
+#         if existing:
+#             continue
+
+#         transaction = CreditTransaction(
+#             loan_id=loan_id,
+#             transaction_type="INTEREST_DUE",
+#             amount=round(total_interest, 2)
+#         )
+#         db.session.add(transaction)
+
+#     db.session.commit()
+#     print(f"Posted INTEREST_DUE for {len(results)} loans as of {today}")
 
 def post_monthly_interest(as_at_date=None):
-    """
-    Sums daily interest in DailyLoansInterestBuffer for the current month
-    and posts a single INTEREST_DUE transaction per loan.
-    """
 
     today = as_at_date or date.today()
     start_of_month = today.replace(day=1)
+
+    interest_receivable_account = Account.query.filter_by(name="Interest Receivable").first()
+    interest_income_account = Account.query.filter_by(name="Loan Interest Income").first()
+
+    if not interest_receivable_account or not interest_income_account:
+        raise ValueError("Required accounts (Interest Receivable / Interest Income) not found")
 
     results = db.session.query(
         DailyLoansInterestBuffer.loan_id,
@@ -1215,21 +1306,49 @@ def post_monthly_interest(as_at_date=None):
     ).all()
 
     for loan_id, total_interest in results:
-        # Check if we already posted to avoid duplicates
+
+        # Avoid duplicates
         existing = CreditTransaction.query.filter_by(
             loan_id=loan_id,
             transaction_type="INTEREST_DUE",
             created_at=today
         ).first()
+
         if existing:
             continue
 
+        total_interest = round(total_interest or 0, 2)
+
+        # ---------------- CREDIT TRANSACTION ----------------
         transaction = CreditTransaction(
             loan_id=loan_id,
             transaction_type="INTEREST_DUE",
-            amount=round(total_interest, 2)
+            amount=total_interest,
+            created_at=today
         )
         db.session.add(transaction)
+
+        # ---------------- LEDGER POSTINGS ----------------
+
+        # 1. Debit Interest Receivable (Asset increases)
+        db.session.add(LedgerEntry(
+            account_id=interest_receivable_account.id,
+            account_code=interest_receivable_account.code,
+            debit=total_interest,
+            credit=0,
+            description="Monthly interest accrued",
+            document_no=str(loan_id)
+        ))
+
+        # 2. Credit Interest Income (Revenue increases)
+        db.session.add(LedgerEntry(
+            account_id=interest_income_account.id,
+            account_code=interest_income_account.code,
+            debit=0,
+            credit=total_interest,
+            description="Monthly interest income accrued",
+            document_no=str(loan_id)
+        ))
 
     db.session.commit()
     print(f"Posted INTEREST_DUE for {len(results)} loans as of {today}")
@@ -1248,7 +1367,7 @@ def post_repayment(loan_id: str, amount: float, repayment_date: date = None):
     remaining = amount
 
     cash_account = Account.query.filter_by(name="Cash").first()
-    principal_account = Account.query.filter_by(name="Priciple Receivable").first()
+    principal_account = Account.query.filter_by(name="Principal Loans Receivable").first()
 
     interest_account = Account.query.filter_by(name="Loan Interest Income").first()
     penalty_account = Account.query.filter_by(name="Loan Interest Income").first()
@@ -1456,13 +1575,14 @@ def save_guarantors():
         new_amount = float(g.get('amountGuaranteed', 0))
 
         # Total already committed in other loans
-        existing = db.session.query(db.func.sum(Guarantor.amount_guaranteed))\
-            .filter(
+        existing = db.session.query(func.sum(Guarantor.amount_guaranteed)).join(Credit, Guarantor.loan_id == Credit.loan_id).filter(
                 Guarantor.member_number == member_no,
-                Guarantor.loan_id != loan_id  # exclude current loan
+                Guarantor.loan_id != loan_id,  # exclude current loan
+                Credit.status != CreditStatusEnum.Completed  # exclude completed loans
             ).scalar() or 0
 
         available = total_shares - existing
+      
         if new_amount > available:
             return jsonify({
                 "error": f"{member_no} exceeds available shares for guarantorship"
@@ -1590,7 +1710,7 @@ def current_member_commitment(member_id):
 # Chat of Accounts
 def create_account():
     data = request.get_json()
-    
+    print(data)
     try:
 
         # Required fields
@@ -1608,13 +1728,15 @@ def create_account():
         try:
             account_type = AccountType(data["type"])
         except ValueError:
-            return jsonify({"error": "Invalid account type"}), 400
+            return jsonify({
+                "error": f"Invalid account type. Must be one of {[t.value for t in AccountType]}"
+            }), 400
 
         # Handle parent account (IMPORTANT)
         parent = None
-        if data.get("parent_code"):
-            parent = Account.query.filter_by(code=data["parent_code"]).first()
-
+        if data.get("parent_id"):
+            parent = Account.query.get(data["parent_id"])
+            print(parent)
             if not parent:
                 return jsonify({"error": "Parent account not found"}), 400
 
@@ -1623,10 +1745,10 @@ def create_account():
             name=data["name"],
             type=account_type,
             parent_id=parent.id if parent else None,
-
             # IMPORTANT RULE
             is_postable=data.get("is_postable", True)
         )
+       
 
         db.session.add(account)
         db.session.commit()
@@ -1641,18 +1763,35 @@ def create_account():
 
 
 
+# def get_accounts():
+#     accounts = Account.query.all()
+
+#     result = []
+
+#     for a in accounts:
+
+#         balance = db.session.query(
+#             func.coalesce(func.sum(LedgerEntry.debit), 0) -
+#             func.coalesce(func.sum(LedgerEntry.credit), 0)
+#         ).filter(LedgerEntry.account_id == a.id).scalar()
+
+#         result.append({
+#             "id": a.id,
+#             "code": a.code,
+#             "name": a.name,
+#             "type": a.type.value,
+#             "parent_id": a.parent_id,
+#             "is_postable": a.is_postable,
+#             "balance": float(balance)
+#         })
+
+#     return jsonify(result)
 def get_accounts():
     accounts = Account.query.all()
 
     result = []
 
     for a in accounts:
-
-        balance = db.session.query(
-            func.coalesce(func.sum(LedgerEntry.debit), 0) -
-            func.coalesce(func.sum(LedgerEntry.credit), 0)
-        ).filter(LedgerEntry.account_id == a.id).scalar()
-
         result.append({
             "id": a.id,
             "code": a.code,
@@ -1660,10 +1799,31 @@ def get_accounts():
             "type": a.type.value,
             "parent_id": a.parent_id,
             "is_postable": a.is_postable,
-            "balance": float(balance)
+            "balance": float(get_account_balance(a))  # ONLY THIS SOURCE
         })
 
     return jsonify(result)
+
+
+def get_leaf_balance(account_id):
+    return db.session.query(
+        func.coalesce(func.sum(LedgerEntry.debit), 0) -
+        func.coalesce(func.sum(LedgerEntry.credit), 0)
+    ).filter(LedgerEntry.account_id == account_id).scalar() or 0
+
+def get_account_balance(account):
+    # POSTING ACCOUNTS → ledger ONLY
+    if account.is_postable:
+        return get_leaf_balance(account.id)
+
+    # NON-POSTING ACCOUNTS → children ONLY (NO LEDGER EVER)
+    total = 0
+
+    for child in account.children:
+        total += get_account_balance(child)
+
+    return total
+
 
 def get_account(id):
     account = Account.query.get_or_404(id)

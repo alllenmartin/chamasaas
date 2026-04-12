@@ -7,7 +7,8 @@ const Accounts = () => {
   const [form, setForm] = useState({
     code: "",
     name: "",
-    type: "ASSET",
+    type: "Asset",
+    parent_id: "",
     is_postable: true,
   });
   const [editingId, setEditingId] = useState(null);
@@ -36,62 +37,67 @@ const Accounts = () => {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
-    setForm((prev) => ({
+    setForm(prev => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: type === "checkbox"
+        ? checked
+        : name === "parent_id" && value !== ""
+          ? Number(value)
+          : value
     }));
   };
 
   // ---------------- CREATE / UPDATE ----------------
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  if (!form.code || !form.name || !form.type) {
-    return alert("All fields are required");
-  }
-
-  setLoading(true);
-
-  try {
-    console.log("Sending:", form); // 👈 DEBUG
-
-    const url = editingId
-      ? `http://127.0.0.1:5000/api/coa/${editingId}`
-      : "http://127.0.0.1:5000/api/coa";
-
-    const method = editingId ? "PUT" : "POST";
-
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-
-    const data = await res.json(); // 👈 IMPORTANT
-
-    if (!res.ok) {
-      console.error("Backend error:", data);
-      alert(data.error || "Failed to save account");
-      return;
+    if (!form.code || !form.name || !form.type) {
+      return alert("All fields are required");
     }
 
-    // Success
-    setForm({
-      code: "",
-      name: "",
-      type: "ASSET",
-      is_postable: true,
-    });
+    setLoading(true);
 
-    setEditingId(null);
-    fetchAccounts();
-  } catch (err) {
-    console.error("Network/JS error:", err);
-    alert("Error saving account");
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      console.log("Sending:", form); // 👈 DEBUG
+
+      const url = editingId
+        ? `http://127.0.0.1:5000/api/coa/${editingId}`
+        : "http://127.0.0.1:5000/api/coa";
+
+      const method = editingId ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      const data = await res.json(); // 👈 IMPORTANT
+
+      if (!res.ok) {
+        console.error("Backend error:", data);
+        alert(data.error || "Failed to save account");
+        return;
+      }
+
+      // Success
+      setForm({
+        code: "",
+        name: "",
+        type: "Asset",
+        parent_id: "",
+        is_postable: true,
+      });
+
+      setEditingId(null);
+      fetchAccounts();
+    } catch (err) {
+      console.error("Network/JS error:", err);
+      alert("Error saving account");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ---------------- EDIT ----------------
   const handleEdit = (acc) => {
@@ -100,6 +106,7 @@ const handleSubmit = async (e) => {
       name: acc.name,
       type: acc.type,
       is_postable: acc.is_postable,
+      parent_id: acc.parent_id || "",
     });
     setEditingId(acc.id);
   };
@@ -119,6 +126,49 @@ const handleSubmit = async (e) => {
     }
   };
 
+  const buildTree = (list) => {
+    const map = {};
+    const roots = [];
+
+    list.forEach(item => {
+      map[item.id] = { ...item, children: [] };
+    });
+
+    list.forEach(item => {
+      if (item.parent_id) {
+        map[item.parent_id]?.children.push(map[item.id]);
+      } else {
+        roots.push(map[item.id]);
+      }
+    });
+
+    return roots;
+  };
+
+const renderRows = (nodes, level = 0) => {
+  return nodes.map(node => (
+    <React.Fragment key={node.id}>
+      <tr className={node.children?.length > 0 ? "coa-parent" : ""}>
+        <td style={{ paddingLeft: `${level * 20}px` }}>
+          {node.code}
+        </td>
+        <td>{node.name}</td>
+        <td>{node.type}</td>
+        <td>{node.balance}</td>
+        <td>{node.is_postable ? "Yes" : "No"}</td>
+        <td>
+          <button onClick={() => handleEdit(node)}>Edit</button>
+          <button onClick={() => handleDelete(node.id)}>Delete</button>
+        </td>
+      </tr>
+
+      {node.children?.length > 0 &&
+        renderRows(node.children, level + 1)
+      }
+    </React.Fragment>
+  ));
+};
+
   return (
     <div className="dashboard">
       <Sidebar active="Accounts" />
@@ -133,6 +183,23 @@ const handleSubmit = async (e) => {
 
         {/* FORM */}
         <form className="account-form" onSubmit={handleSubmit}>
+
+          <select
+            name="parent_id"
+            value={form.parent_id}
+            onChange={handleChange}
+          >
+            <option value="">No Parent (Top Level)</option>
+
+            {accounts
+              .filter(acc => !acc.is_postable)
+              .map(acc => (
+                <option key={acc.id} value={acc.id}>
+                  {acc.code} - {acc.name}
+                </option>
+              ))}
+          </select>
+
           <input
             type="text"
             name="code"
@@ -149,25 +216,26 @@ const handleSubmit = async (e) => {
             onChange={handleChange}
           />
 
+
           <select name="type" value={form.type} onChange={handleChange}>
-           <option value="Asset">Asset</option>
-<option value="Liability">Liability</option>
-<option value="Income">Income</option>
-<option value="Expense">Expense</option>
-<option value="Equity">Equity</option>
+            <option value="Asset">Asset</option>
+            <option value="Liability">Liability</option>
+            <option value="Income">Income</option>
+            <option value="Expense">Expense</option>
+            <option value="Equity">Equity</option>
           </select>
 
           <div className="form-group checkbox-row">
-  <label className="checkbox-label">
-    <input
-      type="checkbox"
-      name="is_postable"
-      checked={form.is_postable}
-      onChange={handleChange}
-    />
-    <span>Postable Account</span>
-  </label>
-</div>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                name="is_postable"
+                checked={form.is_postable}
+                onChange={handleChange}
+              />
+              <span>Postable Account</span>
+            </label>
+          </div>
 
           <button type="submit">
             {editingId ? "Update" : "Create"}
@@ -182,17 +250,18 @@ const handleSubmit = async (e) => {
               <th>Name</th>
               <th>Type</th>
               <th>Balance</th>
-              <th>Postable</th> 
+              <th>Postable</th>
               <th>Actions</th>
             </tr>
           </thead>
 
           <tbody>
-            {accounts.map((acc) => (
+            {renderRows(buildTree(accounts))}
+            {/* {accounts.map((acc) => (
               <tr
-  key={acc.id}
-  className={acc.is_postable ? "coa-child" : "coa-parent"}
->
+                key={acc.id}
+                className={acc.is_postable ? "coa-child" : "coa-parent"}
+              >
                 <td>{acc.code}</td>
                 <td>{acc.name}</td>
                 <td>{acc.type}</td>
@@ -205,7 +274,7 @@ const handleSubmit = async (e) => {
                   </button>
                 </td>
               </tr>
-            ))}
+            ))} */}
           </tbody>
         </table>
       </main>

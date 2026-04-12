@@ -79,7 +79,7 @@ const Sidebar = ({ active = "Dashboard" }) => {
               </Link>
             </li>
           )}
-                {canAccess(["treasurer"]) && (
+          {canAccess(["treasurer"]) && (
             <li className={active === "Credit Journal" ? "active" : ""}>
               <Link to="/loan_journal">
                 <span className="icon">📒</span>
@@ -88,7 +88,14 @@ const Sidebar = ({ active = "Dashboard" }) => {
             </li>
           )}
 
-          
+          {canAccess(["treasurer"]) && (
+            <li className={active === "COA" ? "active" : ""}>
+              <Link to="/coa">
+                <span className="icon">📊</span>
+                <span className="text">Chart of Accounts</span>
+              </Link>
+            </li>
+          )}
 
           {canAccess(["treasurer"]) && (
             <li className={active === "Vendor" ? "active" : ""}>
