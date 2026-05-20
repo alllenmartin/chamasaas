@@ -2,9 +2,11 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import relationship
 import enum
 from datetime import date
+from datetime import date, datetime
 from core import db
 from datetime import timedelta
-from datetime import datetime
+from sqlalchemy import Transaction, func
+
 
 
 # Loan Status
@@ -48,6 +50,14 @@ class TransactionType(enum.Enum):
     INSURANCE_PAID = "Insurance Fee Paid"
     INSURANCE_DUE = "Insurance Fee Due"
     
+# Savings Product Categories
+class SavingsProductCategory(enum.Enum):
+    REG = "Registration Fee"
+    DEP = "Deposit Contribution"
+    SC = "Share Capital"
+    FD = "Fixed Deposit"
+    
+    
 
 class ChamaSettings(db.Model):
     __tablename__ = "chama_settings"
@@ -64,6 +74,8 @@ class ChamaSettings(db.Model):
     interest_rate = db.Column(db.Float, nullable=True)
     installments = db.Column(db.Integer, nullable=True)
     penalty_rate = db.Column(db.Float, nullable=True)
+    registration_acc = db.Column(db.String(50), nullable=True)
+    
 
     def to_dict(self):
         return {
@@ -78,6 +90,7 @@ class ChamaSettings(db.Model):
             "interestRate": self.interest_rate,
             "installments": self.installments,
             "loanpenalty": self.penalty_rate,
+            "registrationFeeAcc": self.registration_acc
         }
         
         
@@ -92,13 +105,13 @@ class Member(db.Model):
     national_id = db.Column(db.String(20),unique=True, nullable=True)
     gender = db.Column(db.String(10), nullable=True)
     dob = db.Column(db.Date, nullable=True)
-    nationality = db.Column(db.String(50))
-    county = db.Column(db.String(50))
-    sub_county = db.Column(db.String(50))
-    phone = db.Column(db.String(20),unique=True)
+    nationality = db.Column(db.String(50),nullable=True)
+    county = db.Column(db.String(50),nullable=True)
+    sub_county = db.Column(db.String(50),nullable=True)
+    phone = db.Column(db.String(20), unique=True, nullable=True)
     email = db.Column(db.String(50))
     address = db.Column(db.String(200))
-    role = db.Column(db.String(20))
+    role = db.Column(db.String(20),nullable=True)
     bank_name = db.Column(db.String(50))
     branch_name = db.Column(db.String(50))
     account_number = db.Column(db.String(30))
@@ -112,8 +125,13 @@ class Member(db.Model):
     landmark = db.Column(db.String(50))
     area_code = db.Column(db.String(50))
     created_at = db.Column(db.Date, default=date.today)
+    registration_paid = db.Column(db.Boolean, default=False)    
+    status = db.Column(db.String(20), default="Draft")
+    last_completed_step = db.Column(db.Integer, default=0)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def to_dict(self):
+       
         return {
             
             "memberId": self.member_id,
@@ -125,7 +143,7 @@ class Member(db.Model):
             "gender": self.gender,
             "dob": self.dob.isoformat() if self.dob else None,
             "nationalId": self.national_id,
-            "status": "Active",
+            "status": self.status,
 
             # Contact
             "phone": self.phone,
@@ -137,7 +155,7 @@ class Member(db.Model):
 
             # Membership
             "role": self.role,
-            "registrationPaid": False,
+            "registrationPaid": self.registration_paid,
 
             # Financial
             "bankName": self.bank_name,
@@ -166,6 +184,22 @@ class Member(db.Model):
     
     def get_beneficiaries(self):
      return Beneficiary.query.filter_by(member_id=self.member_id).all()
+ 
+    def generate_member_id():
+        last_member = (
+        Member.query.order_by(Member.created_at.desc()).first()
+        )
+
+        if not last_member:
+            return "MBR-100001"
+
+        try:
+         last_number = int(last_member.member_id.split("-")[1])
+         new_number = last_number + 1
+        except:
+            new_number = 100001
+
+        return f"MBR-{new_number}"
 
 
 class Beneficiary(db.Model):
@@ -188,6 +222,7 @@ class Contribution(db.Model):
     month = db.Column(db.String(7))  # e.g., 2024-01
     amount = db.Column(db.Integer, nullable=False)
     date = db.Column(db.String(10), default=datetime.today().strftime('%d/%m/%Y'))
+    savings_product = db.Column(db.String(10), nullable=True)
 
     def to_dict(self):
         return {
@@ -197,6 +232,7 @@ class Contribution(db.Model):
             "month": self.month,
             "amount": self.amount,
             "date": self.date,
+            "savingsProduct": self.savings_product
         }
 
 class CreditTransaction(db.Model):
@@ -524,5 +560,32 @@ class LedgerEntry(db.Model):
     created_at = db.Column(db.DateTime,default=datetime.utcnow)
     # Relationship (optional but useful)
     account = db.relationship("Account", backref="ledger_entries")
+    
+class LoanProduct(db.Model):
+    __tablename__ = "loan_products"
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(50), unique=True, nullable=False)
+    name = db.Column(db.String(150), nullable=False)
+    description = db.Column(db.Text)
+    config = db.Column(db.JSON, nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    version = db.Column(db.Integer, default=1)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "code": self.code,
+            "name": self.name,
+            "description": self.description,
+            "config": self.config,
+            "is_active": self.is_active,
+            "version": self.version,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at
+        }
+
+
 
 

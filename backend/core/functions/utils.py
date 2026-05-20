@@ -32,13 +32,27 @@ def get_days_in_year(d: date) -> int:
     return 366 if is_leap_year(d.year) else 365
 
 def generate_member_id():
-    last_member = Member.query.order_by(Member.id.desc()).first()
-    if last_member:
-        last_num = int(last_member.member_id.split("-")[1])
-        new_num = last_num + 1
-    else:
-        new_num = 1
-    return f"MBR-{new_num:06d}"
+
+    last_member = (
+        Member.query
+        .order_by(Member.member_id.desc())
+        .first()
+    )
+
+    if not last_member:
+        return "MBR-100001"
+
+    try:
+        last_number = int(last_member.member_id.split("-")[1])
+        new_number = last_number + 1
+
+    except:
+        new_number = 100001
+
+    return f"MBR-{new_number}"
+
+def money(value):
+    return round(float(value), 2)
 
 
 

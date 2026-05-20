@@ -10,13 +10,13 @@
   flex-direction: column;
   padding-top: 20px;
   padding-bottom: 20px;
-  box-shadow: 2px 0 8px rgba(0,0,0,0.2);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
 }
 
 .logo-container {
   padding: 2px 10px 0px;
   margin-bottom: 6px;
-  border-bottom: 1px solid rgba(255,255,255,0.15);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .logo {
@@ -25,9 +25,11 @@
   letter-spacing: 1px;
   color: #fff;
   text-align: center;
-  white-space: nowrap;      /* prevents wrapping/overlap */
+  white-space: nowrap;
+  /* prevents wrapping/overlap */
   overflow: hidden;
-  text-overflow: ellipsis;  /* clean truncation if too long */
+  text-overflow: ellipsis;
+  /* clean truncation if too long */
 }
 
 .sidebar nav ul {
@@ -40,8 +42,13 @@
 
 .sidebar nav ul li {
   display: flex;
-  align-items: center;
-  gap: 12px; /* space between icon and text */
+  /* align-items: center; */
+  flex-direction: column;
+  /* ADD THIS */
+  align-items: flex-start;
+  /* CHANGE THIS */
+  gap: 12px;
+  /* space between icon and text */
   padding: 12px 20px;
   border-radius: 8px;
   cursor: pointer;
@@ -65,16 +72,22 @@
   font-size: 1rem;
   font-weight: 500;
 }
+
 .sidebar nav ul li a {
-  text-decoration: none; /* removes underline */
-  color: inherit;         /* keeps the same text color as the parent */
-  display: flex;          /* keep icon + text horizontal */
+  text-decoration: none;
+  /* removes underline */
+  color: inherit;
+  /* keeps the same text color as the parent */
+  display: flex;
+  /* keep icon + text horizontal */
   align-items: center;
-  gap: 8px;               /* space between icon and text */
+  gap: 8px;
+  /* space between icon and text */
 }
 
 .sidebar nav ul li a:hover {
-  color: #1d4ed8; /* optional: make it blue on hover */
+  color: #1d4ed8;
+  /* optional: make it blue on hover */
 }
 
 /* New */
@@ -152,3 +165,34 @@
   border-top: 1px solid #eee;
 }
 
+.menu-section {
+  display: block !important;
+  flex-direction: column !important;
+  display: block;
+  width: 100%;
+}
+
+.menu-section>.menu-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  cursor: pointer;
+}
+
+.submenu li {
+  display: block !important;
+  padding: 8px 0;
+}
+
+.submenu li a {
+  display: block;
+  width: 100%;
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.submenu li a:hover {
+  color: #1d4ed8;
+}

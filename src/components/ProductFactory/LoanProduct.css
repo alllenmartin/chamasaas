@@ -1,0 +1,193 @@
+/* =========================
+   LAYOUT
+========================= */
+
+.dashboard {
+  display: flex;
+  min-height: 100vh;
+  background: #f6f8fb;
+  font-family: Arial, sans-serif;
+}
+
+/* main content takes all remaining space */
+.main-content {
+  flex: 1;
+  padding: 30px;
+
+  display: flex;
+}
+
+/* =========================
+   FORM WRAPPER
+========================= */
+
+.form-container {
+  flex: 1;
+  background: white;
+
+  padding: 25px;
+  border-radius: 10px;
+
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+
+  /* IMPORTANT: ensures full width usage */
+  width: 100%;
+}
+
+/* =========================
+   INPUT LAYOUTS
+========================= */
+
+/* 2-column grid inputs */
+.grid {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.grid input,
+.grid select {
+  flex: 1;
+}
+
+/* inline row for rules/charges */
+.inline-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+/* =========================
+   INPUT STYLES
+========================= */
+
+input,
+select {
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  outline: none;
+  width: 100%;
+}
+
+input:focus,
+select:focus {
+  border-color: #2563eb;
+}
+
+/* =========================
+   HEADINGS
+========================= */
+
+h2 {
+  margin-bottom: 20px;
+  color: #111827;
+}
+
+h4 {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  color: #374151;
+}
+
+/* =========================
+   BUTTONS
+========================= */
+
+button {
+  padding: 8px 12px;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+/* ADD BUTTONS (blue/primary) */
+.add-btn {
+  background: #1e272e;
+  color: white;
+  margin-top: 10px;
+}
+
+.add-btn:hover {
+  background: #1e40af;
+}
+
+/* SUBMIT BUTTON */
+.submit-btn {
+  background: #1e272e;
+  color: white;
+  padding: 12px 18px;
+  margin-top: 15px;
+  font-weight: bold;
+}
+
+.submit-btn:hover {
+  background: #15803d;
+}
+
+/* DELETE BUTTON */
+.delete-btn {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.delete-btn:hover {
+  background: #fecaca;
+}
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 768px) {
+  .grid {
+    flex-direction: column;
+  }
+
+  .inline-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .main-content {
+    padding: 15px;
+  }
+}
+
+/* Container for buttons */
+.action-buttons {
+  display: flex;
+  gap: 10px; /* 👈 spacing between buttons */
+}
+
+/* General button style */
+.action-buttons button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  background: #e2e8f0;
+}
+
+/* Hover effect */
+.action-buttons button:hover {
+  opacity: 0.85;
+}
+
+/* Specific styles */
+.action-buttons button:nth-child(1) {
+  background: #3b82f6; /* View - blue */
+  color: white;
+}
+
+.action-buttons button:nth-child(2) {
+  background: #10b981; /* Edit - green */
+  color: white;
+}
+
+.delete-btn {
+  background: #ef4444 !important; /* Delete - red */
+  color: white;
+}

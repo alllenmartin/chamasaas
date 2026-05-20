@@ -3,7 +3,9 @@ from flask import request,jsonify
 from flask_cors import cross_origin
 from app import app
 from datetime import date
-from .controller import add_repayment,delete_account,update_account,get_accounts,get_account,create_account,create_member,run_post_monthly_interest,run_monthly_interest_calculation, calculate_daily_interest_for_month,current_member_commitment,get_all_security,security_status,save_guarantors,save_collaterals,get_active_loans,calculate_daily_interest_for_today, save_schedule,new_generate_schedule,get_contributions_each,member_lookup,get_settings,send_sms,update_settings,get_members,update_member,delete_member,get_contributions,add_contribution,request_credit,get_credits,credit_members,update_credit_status,get_credit,generate_schedule,get_schedule,mark_paid,get_vendor_ledger,receive_vendor_payment,get_vendors,create_vendor,delete_vendor,update_vendor,get_contributions_monthly,get_repayment_schedule
+
+from .models import SavingsProductCategory
+from .controller import add_repayment,delete_account,member_statement,update_account,get_member_loans,get_member_overview,get_member_contributions_by_product,get_member_contributions,member_financial_summary,delete_product,update_product,get_products,get_product,create_product,get_accounts,get_account,create_account,create_member,run_post_monthly_interest,run_monthly_interest_calculation, calculate_daily_interest_for_month,current_member_commitment,get_all_security,security_status,save_guarantors,save_collaterals,get_active_loans,calculate_daily_interest_for_today, save_schedule,new_generate_schedule,get_contributions_each,member_lookup,get_settings,send_sms,update_settings,get_members,update_member,delete_member,get_contributions,add_contribution,request_credit,get_credits,credit_members,update_credit_status,get_credit,generate_schedule,get_schedule,mark_paid,get_vendor_ledger,receive_vendor_payment,get_vendors,create_vendor,delete_vendor,update_vendor,get_contributions_monthly,get_repayment_schedule
 from .mpesa_flow import get_mpesa_transactions,initiate_MPESA_push
 
 @app.route("/api/settings", methods=['GET','POST'])
@@ -19,7 +21,13 @@ def memberss():
     if request.method == 'GET': return get_members()
     # if request.method == 'POST': return add_member()
     else: return 'Method is Not Allowed'
-    
+ 
+@app.route("/api/newmembers/<member_id>", methods=["PUT"])
+@cross_origin()
+def updatemembers1(member_id):
+    if request.method == 'PUT': return update_member(member_id)
+  
+       
 @app.route("/api/members/<member_id>", methods=["PUT","DELETE"])
 @cross_origin()
 def updatemembers(member_id):
@@ -202,15 +210,12 @@ def get_committment(member_id):
     if request.method == 'GET': return current_member_commitment(member_id)
     
 # Chat of Accounts
-@app.route("/api/coa", methods=["POST"])
+@app.route("/api/coa", methods=["POST","GET"])
 @cross_origin()
-def create_coa():
+def coa():
     if request.method == 'POST': return create_account()
-    
-@app.route("/api/coa", methods=["GET"])
-@cross_origin()
-def get_coa():
     if request.method == 'GET': return get_accounts()
+    
     
 @app.route("/api/coa/<int:id>", methods=["GET"])
 @cross_origin()
@@ -240,5 +245,71 @@ def test1():
 @cross_origin()
 def test():
     if request.method == 'POST': return run_monthly_interest_calculation()
+    
+# End
+# Product Factory
+@app.route("/api/loan_product_factory", methods=["POST","GET"])
+@cross_origin()
+def loan_product():
+    if request.method == 'POST': return create_product()
+    if request.method == 'GET': return get_products()
+
+    
+@app.route("/api/loan_product_factory/<int:id>", methods=["GET"])
+@cross_origin()
+def get_loan_product(id):
+    if request.method == 'GET': return get_product(id)
+
+@app.route("/api/loan_product_factory/<int:id>", methods=["PUT"])
+@cross_origin()
+def update_loan_product(id):
+    if request.method == 'PUT': return update_product(id)
+
+@app.route("/api/loan_product_factory/<int:id>", methods=["DELETE"])
+@cross_origin()
+def delete_loan_product(id):
+    if request.method == 'DELETE': return delete_product(id)
+    
+
+@app.route("/api/savingsproductcategory")
+@cross_origin()
+def get_transaction_types():
+    return jsonify([
+        {"value": t.name, "label": t.value}
+        for t in SavingsProductCategory
+    ])
+    
+@app.route("/api/members/<member_id>/financial-summary", methods=["GET"])
+@cross_origin()
+def memberfinancialsummary(member_id):
+    if request.method == 'GET': return member_financial_summary(member_id)
+    
+@app.route("/api/members/<member_id>/contributions", methods=["GET"])
+@cross_origin()
+def getmembercontributions(member_id):
+    if request.method == 'GET': return get_member_contributions(member_id)
+    
+@app.route("/api/members/<member_id>/contributions/<product>", methods=["GET"])
+@cross_origin()
+def getmembercontributionsbyproduct(member_id,product):
+    if request.method == 'GET': return get_member_contributions_by_product(member_id, product)
+    
+@app.route("/api/members/<member_id>/loans", methods=["GET"])
+@cross_origin()
+def getmemberloans(member_id):
+    if request.method == 'GET': return get_member_loans(member_id)
+
+ 
+@app.route("/api/members/<member_id>")
+@cross_origin()
+def getmemberoverview(member_id):
+    if request.method == 'GET': return get_member_overview(member_id)
+    
+@app.route("/api/members/<member_id>/statement")
+@cross_origin()
+def memberstatement(member_id):
+ if request.method == 'GET': return member_statement(member_id)
+
+
     
     

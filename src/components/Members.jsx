@@ -63,16 +63,22 @@ const Members = () => {
               {members.map((m) => (
                 <tr key={m.id}>
                   <td>{m.name || `${m.fname} ${m.lname}`}</td>
-                  <td>{m.id}</td>
+                  <td>{m.nationalId}</td>
                   <td>{m.phone}</td>
                   <td>{m.role}</td>
                   <td>{m.registrationPaid ? "Yes" : "No"}</td>
                   <td>
-                    <button
+                    {/* <button
                       className="view-btn"
-                      onClick={() => navigate(`/members/${m.id}`)}
+                      onClick={() => navigate(`/members/${m.memberId}`)}
                     >
                       View
+                    </button> */}
+                    <button
+                      className="view-btn"
+                      onClick={() => navigate(`/members/${m.memberId}/overview`)}
+                    >
+                      Overview
                     </button>
                   </td>
                 </tr>

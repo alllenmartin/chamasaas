@@ -7,6 +7,7 @@ const Settings = () => {
   const [settings, setSettings] = useState({
     contributionAmount: "",
     registrationFee: "",
+    registrationFeeAcc: "",
     frequency: "Monthly",
     cutOffDay: "",
     organizationType: "Savings",
@@ -15,12 +16,13 @@ const Settings = () => {
     creditMultiplier: "",
     interestRate: "",
     installments: "",
-    loanpenalty:"",
+    loanpenalty: "",
   });
 
   const [errors, setErrors] = useState({});
   const [maxCredit, setMaxCredit] = useState(0);
   const [loading, setLoading] = useState(false); // loader
+  const [accounts, setAccounts] = useState([]);
 
   const isCreditEnabled =
     settings.organizationType === "Credit" ||
@@ -104,10 +106,10 @@ const Settings = () => {
       if (!settings.installments || settings.installments < 1) {
         newErrors.installments = "Installments must be at least 1";
       }
-       if (settings.loanpenalty < 0) {
+      if (settings.loanpenalty < 0) {
         newErrors.loanpenalty = "Interest rate cannot be negative";
       }
-      
+
     }
 
     setErrors(newErrors);
@@ -122,9 +124,9 @@ const Settings = () => {
     setLoading(true);
     try {
       console.log(settings)
-    
+
       const res = await fetch("http://127.0.0.1:5000/api/settings", {
-      
+
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
@@ -142,6 +144,26 @@ const Settings = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        const res = await fetch("http://127.0.0.1:5000/api/coa");
+        const data = await res.json();
+
+        // Only postable accounts
+        const postableAccounts = data.filter(
+          (acc) => acc.is_postable === true
+        );
+
+        setAccounts(postableAccounts);
+      } catch (err) {
+        console.error("Failed to fetch accounts", err);
+      }
+    };
+
+    fetchAccounts();
+  }, []);
 
   return (
     <div className="dashboard">
@@ -192,6 +214,30 @@ const Settings = () => {
               <span className="error">{errors.registrationFee}</span>
             )}
           </div>
+
+
+          <div className="form-group">
+            <label>Registration Fee Account</label>
+
+            <select
+              name="registrationFeeAcc"
+              value={settings.registrationFeeAcc}
+              onChange={handleChange}
+            >
+              <option value="">Select Account</option>
+
+              {accounts.map((acc) => (
+                <option key={acc.id} value={acc.code}>
+                  {acc.code} - {acc.name}
+                </option>
+              ))}
+            </select>
+
+            {errors.registrationFeeAcc && (
+              <span className="error">{errors.registrationFeeAcc}</span>
+            )}
+          </div>
+
 
           {/* Frequency */}
           <div className="form-group">
@@ -318,7 +364,7 @@ const Settings = () => {
                 )}
               </div>
 
-                 <div className="form-group">
+              <div className="form-group">
                 <label>Loan Penalty %</label>
                 <input
                   type="number"

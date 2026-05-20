@@ -1,6 +1,7 @@
 
 from flask import Blueprint, jsonify, request,abort
-from .models import CreditStatusEnum,AccountType,LedgerEntry,db,Account, ChamaSettings,Member,Contribution,Credit,CreditRepayment,VendorLedger,Vendor,RepaymentSchedule,CreditTransaction,TransactionType,DailyLoansInterestBuffer,Beneficiary,Collateral,Guarantor
+from .product_factory import build_config
+from .models import CreditStatusEnum,AccountType,LedgerEntry, LoanProduct,db,Account, ChamaSettings,Member,Contribution,Credit,CreditRepayment,VendorLedger,Vendor,RepaymentSchedule,CreditTransaction,TransactionType,DailyLoansInterestBuffer,Beneficiary,Collateral,Guarantor
 from datetime import datetime,timedelta
 from datetime import date
 import calendar
@@ -10,7 +11,7 @@ from app import app
 from dateutil.relativedelta import relativedelta
 import math
 from sqlalchemy import func, case
-from .utils import get_days_in_year, get_principal_balance_as_at,generate_member_id
+from .utils import get_days_in_year, get_principal_balance_as_at,generate_member_id, money
 from sqlalchemy.exc import IntegrityError
 
 
@@ -27,6 +28,7 @@ def get_settings():
 def update_settings():
     data = request.json
     settings = ChamaSettings.query.first()
+    print(data)
     if not settings:
         settings = ChamaSettings()
         db.session.add(settings)
@@ -44,6 +46,7 @@ def update_settings():
     settings.interest_rate = data.get("interestRate", settings.interest_rate)
     settings.installments = data.get("installments", settings.installments)
     settings.penalty_rate = data.get("loanpenalty", settings.penalty_rate)
+    settings.registration_acc = data.get("registrationFeeAcc", settings.registration_acc)
 
     db.session.commit()
     return jsonify(settings.to_dict()), 200
@@ -54,115 +57,156 @@ def get_members():
     members = Member.query.all()
     return jsonify([m.to_dict() for m in members]), 200
 
-# def add_member():
-#     data = request.get_json()
-#     if Member.query.get(data['id']):
-#         return jsonify({"error": "Member with this ID already exists"}), 400
-#     member = Member(
-#         id=data["id"],
-#         name=data["name"],
-#         phone=data["phone"],
-#         role=data.get("role", "Member"),
-#         amountPaid=data.get("amountPaid", 0),
-#         status=data.get("status", "Unpaid"),
-#         registrationPaid=data.get("registrationPaid", False),
-#     )
-#     db.session.add(member)
-#     db.session.commit()
-#     return jsonify(member.to_dict()), 201
-
-
 
 
 def create_member():
+
     data = request.json
-    print(data)
 
-    try:
-        # Use frontend-provided memberId or generate one
-        member_id = data.get("memberId") or generate_member_id()
+    member_id = generate_member_id()
 
-        # ✅ Convert DOB properly
-        dob_str = data.get("dob")
-        if not dob_str:
-            return jsonify({"error": "Date of birth is required"}), 400
-        dob = datetime.strptime(dob_str, "%Y-%m-%d").date()
+    member = Member(
+        member_id=member_id,
 
-        # Create member
-        new_member = Member(
+        first_name=data.get("firstName"),
+        second_name=data.get("secondName"),
+        last_name=data.get("lastName"),
+
+        national_id=data.get("nationalId"),
+
+        gender=data.get("gender"),
+
+        dob=date.fromisoformat(data["dob"]) if data.get("dob") else None,
+
+        nationality=data.get("nationality"),
+        county=data.get("county"),
+        sub_county=data.get("subCounty"),
+
+        phone=data.get("phone"),
+        email=data.get("email"),
+        address=data.get("address"),
+
+        role=data.get("role"),
+
+        bank_name=data.get("bankName"),
+        branch_name=data.get("branchName"),
+        account_number=data.get("accountNumber"),
+
+        employment=data.get("employment"),
+        employer=data.get("employer"),
+        department=data.get("department"),
+        terms_of_employment=data.get("termsOfEmployment"),
+
+        business_type=data.get("businessType"),
+        business_name=data.get("businessName"),
+        business_location=data.get("businessLocation"),
+        landmark=data.get("landmark"),
+
+        status=data.get("status", "Draft")
+    )
+
+    db.session.add(member)
+    db.session.flush()
+
+    beneficiaries = data.get("beneficiaries", [])
+
+    for b in beneficiaries:
+
+        beneficiary = Beneficiary(
             member_id=member_id,
-            first_name=data.get("firstName"),
-            second_name=data.get("secondName"),
-            last_name=data.get("lastName"),
-            national_id=data.get("nationalId"),
-            gender=data.get("gender"),
-            dob=dob,
-            nationality=data.get("nationality"),
-            county=data.get("county"),
-            sub_county=data.get("subCounty"),
-            phone=data.get("phone"),
-            email=data.get("email"),
-            address=data.get("address"),
-            role=data.get("role"),
-            bank_name=data.get("bankName"),
-            branch_name=data.get("branchName"),
-            account_number=data.get("accountNumber"),
-            employment=data.get("employment"),
-            employer=data.get("employer"),
-            department=data.get("department"),
-            terms_of_employment=data.get("termsOfEmployment"),
-            business_type=data.get("businessType"),
-            business_name=data.get("businessName"),
-            business_location=data.get("businessLocation"),
-            landmark=data.get("landmark"),
+            name=b.get("name"),
+            phone=b.get("phone"),
+            relation=b.get("relation"),
+            share=b.get("share"),
+            id_number=b.get("idNumber"),
+            address=b.get("address"),
+            guardian=b.get("guardian"),
         )
-        db.session.add(new_member)
-        db.session.flush()  # Ensures member_id is available for beneficiaries
 
-        # Add beneficiaries
-        for b in data.get("beneficiaries", []):
-            ben = Beneficiary(
-                member_id=member_id,
-                name=b.get("name"),
-                phone=b.get("phone"),
-                relation=b.get("relation"),
-                share=b.get("share"),
-                id_number=b.get("idNumber"),
-                address=b.get("address"),
-                guardian=b.get("guardian"),
-            )
-            db.session.add(ben)
+        db.session.add(beneficiary)
 
-        db.session.commit()
+    db.session.commit()
 
-        return jsonify({
-            "message": "Member created successfully",
-            "memberId": member_id
-        }), 201
-
-    except Exception as e:
-        print(e)
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
-
+    return jsonify({
+        "message": "Member created successfully",
+        "memberId": member.member_id
+    }), 201
 
 
 
 def update_member(member_id):
-    data = request.get_json()
-    member = Member.query.get(member_id)
-    if not member:
-        return jsonify({"error": "Member not found"}), 404
-    
-    
-    member.first_name = data["first_name"]
-    member.phone = data["phone"]
-    member.role = data.get("role", member.role)
-    member.amountPaid = data.get("amountPaid", member.amountPaid)
+
+    member = Member.query.get_or_404(member_id)
+
+    data = request.json
+
+    member.first_name = data.get("firstName")
+    member.second_name = data.get("secondName")
+    member.last_name = data.get("lastName")
+
+    member.national_id = data.get("nationalId")
+
+    member.gender = data.get("gender")
+
+    member.dob = (
+        date.fromisoformat(data["dob"])
+        if data.get("dob")
+        else None
+    )
+
+    member.nationality = data.get("nationality")
+    member.county = data.get("county")
+    member.sub_county = data.get("subCounty")
+
+    member.phone = data.get("phone")
+    member.email = data.get("email")
+    member.address = data.get("address")
+
+    member.role = data.get("role")
+
+    member.bank_name = data.get("bankName")
+    member.branch_name = data.get("branchName")
+    member.account_number = data.get("accountNumber")
+
+    member.employment = data.get("employment")
+    member.employer = data.get("employer")
+    member.department = data.get("department")
+    member.terms_of_employment = data.get("termsOfEmployment")
+
+    member.business_type = data.get("businessType")
+    member.business_name = data.get("businessName")
+    member.business_location = data.get("businessLocation")
+    member.landmark = data.get("landmark")
+
     member.status = data.get("status", member.status)
-    member.registrationPaid = data.get("registrationPaid", member.registrationPaid)
+
+    # DELETE OLD BENEFICIARIES
+    Beneficiary.query.filter_by(member_id=member_id).delete()
+
+    # ADD NEW BENEFICIARIES
+    beneficiaries = data.get("beneficiaries", [])
+
+    for b in beneficiaries:
+
+        beneficiary = Beneficiary(
+            member_id=member_id,
+            name=b.get("name"),
+            phone=b.get("phone"),
+            relation=b.get("relation"),
+            share=b.get("share"),
+            id_number=b.get("idNumber"),
+            address=b.get("address"),
+            guardian=b.get("guardian"),
+        )
+
+        db.session.add(beneficiary)
+
     db.session.commit()
-    return jsonify(member.to_dict()), 200
+
+    return jsonify({
+        "message": "Member updated successfully",
+        "memberId": member.member_id
+    })
 
 def delete_member(member_id):
     member = Member.query.get(member_id)
@@ -189,39 +233,183 @@ def get_contributions_monthly():
         contributions = Contribution.query.all()
     return jsonify([c.to_dict() for c in contributions])
 
+# def add_contribution():
+#     data = request.json
+#     member = Member.query.get(data["memberId"])
+#     if not member:
+#         return jsonify({"error": "Member not found"}), 404
+
+#     contribution = Contribution(
+#         memberId=member.member_id,
+#         memberName=member.first_name,
+#         month=data["month"],
+#         amount=data["amount"],
+#         date=datetime.today().strftime('%d/%m/%Y')
+#     )
+#     db.session.add(contribution)
+#     db.session.commit()
+#     return jsonify(contribution.to_dict()), 201
+
 def add_contribution():
     data = request.json
-    member = Member.query.get(data["memberId"])
+
+
+    # ================= VALIDATION =================
+    member = Member.query.get(data.get("memberId"))
+    
     if not member:
         return jsonify({"error": "Member not found"}), 404
 
+    if not data.get("amount"):
+        return jsonify({"error": "Amount is required"}), 400
+
+    if not data.get("date"):
+        return jsonify({"error": "Date is required"}), 400
+
+    # ================= FORMAT DATE =================
+    try:
+        input_date = datetime.strptime(data["date"], "%Y-%m-%d")
+    except ValueError:
+        return jsonify({"error": "Invalid date format"}), 400
+
+    month = input_date.strftime("%Y-%m")
+    formatted_date = input_date.strftime("%m/%d/%Y").lstrip("0").replace("/0", "/")
+ 
+
+    # ================= MEMBER NAME =================
+    member_name = f"{member.first_name or ''} {member.second_name or ''} {member.last_name or ''}".strip()
+
+    # ================= DOCUMENT NO =================
+    document_no = f"CNTR-{int(datetime.utcnow().timestamp())}"
+
+    # ================= AMOUNT =================
+    amount = float(data["amount"])
+
+    # ================= ACCOUNT MAPPING =================
+    cash_account = Account.query.filter_by(name="Cash").first()
+   
+
+    if not cash_account:
+        return jsonify({"error": "Cash account not configured"}), 400
+
+    # Map savings product → GL
+    savings_product = data.get("savingsProduct")
+    print(savings_product)
+
+    if savings_product == "DEP":
+        target_account = Account.query.filter_by(name="Member Savings Control").first()
+    elif savings_product == "SC":
+        target_account = Account.query.filter_by(name="Share Capital Control").first()
+    elif savings_product == "REG":
+       settings = ChamaSettings.query.first()
+       if not settings or not settings.registration_acc:
+        return jsonify({
+            "error": "Registration Fee Account not configured in settings"
+        }), 400
+       target_account = Account.query.filter_by(
+        code=settings.registration_acc).first()
+
+    else:
+        return jsonify({"error": "Invalid savings product"}), 400
+
+    if not target_account:
+        return jsonify({"error": "Target account not configured"}), 400
+
+    # ================= SAVE CONTRIBUTION =================
     contribution = Contribution(
         memberId=member.member_id,
-        memberName=member.first_name,
-        month=data["month"],
-        amount=data["amount"],
-        date=datetime.today().strftime('%d/%m/%Y')
+        memberName=member_name,
+        month=month,
+        amount=money(amount),
+        date=datetime.today().strftime('%d/%m/%Y'),
+        savings_product=savings_product,
+        # document_no=document_no
     )
+
     db.session.add(contribution)
+
+    # ================= LEDGER ENTRIES =================
+    # Debit Cash
+    debit_entry = LedgerEntry(
+        account_id=cash_account.id,
+        account_code=cash_account.code,
+        debit=money(amount),
+        credit=0,
+        description=f"{savings_product} contribution from {member_name}",
+        document_no=document_no,
+        transaction_date=input_date
+    )
+
+    # Credit Member Liability
+    credit_entry = LedgerEntry(
+        account_id=target_account.id,
+        account_code=target_account.code,
+        debit=0,
+        credit=money(amount),
+        description=f"{savings_product} contribution from {member_name}",
+        document_no=document_no,
+        transaction_date=input_date
+    )
+
+    db.session.add(debit_entry)
+    db.session.add(credit_entry)
+    
+    # ================= AUTO REGISTRATION CHECK =================
+    if savings_product == "REG":
+        settings = ChamaSettings.query.first()
+        registration_fee = settings.registration_fee if settings else 0
+
+        total_paid = db.session.query(
+            func.coalesce(func.sum(Contribution.amount), 0)
+        ).filter(
+            Contribution.memberId == member.member_id,
+            Contribution.savings_product == "REG"
+        ).scalar()
+
+        if total_paid >= registration_fee:
+            member.registration_paid = True
+
+# ================= COMMIT =================
+
+    # ================= COMMIT =================
     db.session.commit()
+
     return jsonify(contribution.to_dict()), 201
 
 
 # Credit
 def credit_members():
     members = Member.query.all()
+    settings = ChamaSettings.query.first()
+    required_fee = settings.registration_fee if settings else 0
 
     results = []
+
     for m in members:
+
         total_contribution = db.session.query(
             db.func.coalesce(db.func.sum(Contribution.amount), 0)
-        ).filter(Contribution.memberId == m.member_id).scalar()
+        ).filter(
+            Contribution.memberId == m.member_id,
+            Contribution.savings_product == "DEP"
+        ).scalar()
+
+        reg_paid = db.session.query(
+            db.func.coalesce(db.func.sum(Contribution.amount), 0)
+        ).filter(
+            Contribution.memberId == m.member_id,
+            Contribution.savings_product == "REG"
+        ).scalar()
 
         results.append({
             "id": m.member_id,
-            "name": m.first_name,
-            "registrationPaidAmount": 1000,
-            "totalContribution": total_contribution,
+            "name": f"{m.first_name or ''} {m.last_name or ''}".strip(),
+            "nationalId": m.national_id,
+
+            "registrationPaidAmount": float(reg_paid),
+            "registrationPaid": reg_paid >= required_fee,
+
+            "totalContribution": float(total_contribution or 0),
         })
 
     return jsonify(results), 200
@@ -254,7 +442,6 @@ def get_credits():
 
 def generate_loan_id():
     last_credit = Credit.query.order_by(Credit.id.desc()).first()
-
     if not last_credit:
         return "L001"
 
@@ -287,7 +474,6 @@ def request_credit():
 def update_credit_status(loan_id):
     credit = Credit.query.filter_by(loan_id=loan_id).first_or_404()
     data = request.json
-
    
 
     if credit.status == CreditStatusEnum.Completed:
@@ -306,7 +492,7 @@ def update_credit_status(loan_id):
         }), 400
     # ---------------------------------------------------------------
 
-    # ✅ Handle status change (loan disbursement)
+    # Handle status change (loan disbursement)
     if "status" in data:
         new_status = CreditStatusEnum(data["status"])
 
@@ -324,7 +510,7 @@ def update_credit_status(loan_id):
         db.session.add(LedgerEntry(
             account_id=principal_account.id,
             account_code=principal_account.code,
-            debit=loan_amount,
+            debit=money(loan_amount),
             credit=0,
             description=f"Loan disbursement - {credit.loan_id}",
             document_no=str(loan_id)
@@ -335,7 +521,7 @@ def update_credit_status(loan_id):
             account_id=cash_account.id,
             account_code=cash_account.code,
             debit=0,
-            credit=loan_amount,
+            credit=money(loan_amount),
             description=f"Loan disbursement - {credit.loan_id}",
             document_no=str(loan_id)
         ))
@@ -1171,7 +1357,7 @@ def calculate_daily_interest_for_month(run_date: date):
             # Get yesterday's balance
             prev_date = current_date - timedelta(days=1)
            
-
+          
             ob = get_principal_balance_as_at(loan.loan_id, prev_date)
             print('Found',ob)
 
@@ -1211,6 +1397,7 @@ def run_monthly_interest_calculation():
     except ValueError:
         return jsonify({"error": "Invalid date format. Use YYYY-MM-DD"}), 400
 
+    print("Running monthly interest calculation for date:", run_date)
     calculate_daily_interest_for_month(run_date)
 
     return jsonify({
@@ -1318,6 +1505,7 @@ def post_monthly_interest(as_at_date=None):
             continue
 
         total_interest = round(total_interest or 0, 2)
+        print(f"Posting interest for loan {loan_id}: {total_interest}")
 
         # ---------------- CREDIT TRANSACTION ----------------
         transaction = CreditTransaction(
@@ -1345,7 +1533,7 @@ def post_monthly_interest(as_at_date=None):
             account_id=interest_income_account.id,
             account_code=interest_income_account.code,
             debit=0,
-            credit=total_interest,
+            credit=money(total_interest),
             description="Monthly interest income accrued",
             document_no=str(loan_id)
         ))
@@ -1367,6 +1555,7 @@ def post_repayment(loan_id: str, amount: float, repayment_date: date = None):
     remaining = amount
 
     cash_account = Account.query.filter_by(name="Cash").first()
+    print(cash_account)
     principal_account = Account.query.filter_by(name="Principal Loans Receivable").first()
 
     interest_account = Account.query.filter_by(name="Loan Interest Income").first()
@@ -1382,7 +1571,7 @@ def post_repayment(loan_id: str, amount: float, repayment_date: date = None):
             transaction = CreditTransaction(
                 loan_id=loan_id,
                 transaction_type=transaction_type,
-                amount=-pay,
+                amount=-money(pay),
                 created_at=repayment_date
             )
             db.session.add(transaction)
@@ -1392,7 +1581,7 @@ def post_repayment(loan_id: str, amount: float, repayment_date: date = None):
             db.session.add(LedgerEntry(
                 account_id=cash_account.id,
                 account_code=cash_account.code,
-                debit=pay,
+                debit=money(pay),
                 credit=0,
                 description=f"Loan repayment - {transaction_type}",
                 document_no=str(loan_id)
@@ -1405,7 +1594,7 @@ def post_repayment(loan_id: str, amount: float, repayment_date: date = None):
                     account_id=principal_account.id,
                     account_code=principal_account.code,
                     debit=0,
-                    credit=pay,
+                    credit=money(pay),
                     description="Principal repayment",
                     document_no=str(loan_id)
                 ))
@@ -1415,7 +1604,7 @@ def post_repayment(loan_id: str, amount: float, repayment_date: date = None):
                     account_id=interest_account.id,
                     account_code=interest_account.code,
                     debit=0,
-                    credit=pay,
+                    credit=money(pay),
                     description="Interest income",
                     document_no=str(loan_id)
                 ))
@@ -1425,7 +1614,7 @@ def post_repayment(loan_id: str, amount: float, repayment_date: date = None):
                     account_id=penalty_account.id,
                     account_code=penalty_account.code,
                     debit=0,
-                    credit=pay,
+                    credit=money(pay),
                     description="Penalty income",
                     document_no=str(loan_id)
                 ))
@@ -1435,12 +1624,12 @@ def post_repayment(loan_id: str, amount: float, repayment_date: date = None):
                     account_id=insurance_account.id,
                     account_code=insurance_account.code,
                     debit=0,
-                    credit=pay,
+                    credit=money(pay),
                     description="Insurance income",
                     document_no=str(loan_id)
                 ))
 
-            remaining -= pay
+            remaining -= money(pay)
 
         return remaining
 
@@ -1461,31 +1650,72 @@ def post_repayment(loan_id: str, amount: float, repayment_date: date = None):
     return remaining
 
 
+# def add_repayment():
+#     data = request.json
+#     loan_id = data.get("loanId")
+#     amount = data.get("amount")
+#     repayment_date = data.get("date")
+#     if repayment_date:
+#         repayment_date = date.fromisoformat(repayment_date)
+
+#     try:
+#         remaining = post_repayment(loan_id, amount, repayment_date)
+
+#         # If balance is 0, mark loan as Completed
+#         if remaining == 0:
+#             credit = Credit.query.filter_by(loan_id=loan_id).first()
+#             if credit and credit.status != CreditStatusEnum.Completed:
+#                 credit.status = CreditStatusEnum.Completed
+#                 db.session.commit()   # or commit later if you reuse the session
+
+#         return jsonify({
+#             "loanId": loan_id,
+#             "amount": amount,
+#             "remainingUnapplied": remaining,
+#             "date": repayment_date.isoformat()
+#         })
+#     except ValueError as e:
+#         return jsonify({"error": str(e)}), 400
+
 def add_repayment():
     data = request.json
     loan_id = data.get("loanId")
     amount = data.get("amount")
     repayment_date = data.get("date")
+
     if repayment_date:
         repayment_date = date.fromisoformat(repayment_date)
 
     try:
+        # 1. Process repayment allocation
         remaining = post_repayment(loan_id, amount, repayment_date)
 
-        # If balance is 0, mark loan as Completed
-        if remaining == 0:
-            credit = Credit.query.filter_by(loan_id=loan_id).first()
-            if credit and credit.status != CreditStatusEnum.Completed:
+        # 2. Get updated loan
+        credit = Credit.query.filter_by(loan_id=loan_id).first()
+
+        # 3. Calculate REAL outstanding balance
+        total_outstanding = (
+            (credit.outstanding_balance or 0) +
+            (credit.outstanding_interest or 0) +
+            (credit.outstanding_penalty or 0) +
+            (credit.outstanding_insurance or 0)
+        )
+
+        # 4. Only close if truly cleared
+        if round(total_outstanding, 2) <= 0:
+            if credit.status != CreditStatusEnum.Completed:
                 credit.status = CreditStatusEnum.Completed
-                db.session.commit()   # or commit later if you reuse the session
+                db.session.commit()
 
         return jsonify({
             "loanId": loan_id,
             "amount": amount,
             "remainingUnapplied": remaining,
-            "date": repayment_date.isoformat()
+            "date": repayment_date.isoformat() if repayment_date else None
         })
+
     except ValueError as e:
+        print(e)
         return jsonify({"error": str(e)}), 400
     
 
@@ -1867,4 +2097,294 @@ def delete_account(id):
 
     return jsonify({"message": "Account deleted"})
 
+# Product Factory
+def create_product():
+    data = request.json
 
+    config = build_config(data)
+
+    product = LoanProduct(
+        code=data["code"],
+        name=data["name"],
+        description=data.get("description"),
+        config=config
+    )
+
+    db.session.add(product)
+    db.session.commit()
+
+    return jsonify(product.to_dict()), 201
+
+def get_products():
+    products = LoanProduct.query.filter_by(is_active=True).all()
+
+    return jsonify([p.to_dict() for p in products])
+
+# def get_product(id):
+#     product = LoanProduct.query.get_or_404(id)
+#     return jsonify(product.to_dict())
+
+def update_product(id):
+    product = LoanProduct.query.get_or_404(id)
+    data = request.json
+
+    # rebuild config
+    product.config = build_config(data)
+
+    product.name = data.get("name", product.name)
+    product.description = data.get("description", product.description)
+
+    # 🔥 versioning
+    product.version += 1
+
+    db.session.commit()
+
+    return jsonify(product.to_dict())
+
+def delete_product(id):
+    product = LoanProduct.query.get_or_404(id)
+
+    product.is_active = False
+    db.session.commit()
+
+    return jsonify({"message": "Product deactivated"})
+
+# @app.route("/api/loan_product_factory/<int:id>")
+def get_product(id):
+    lp = LoanProduct.query.get(id)
+    return jsonify(flatten_loan_product(lp))
+
+def flatten_loan_product(lp):
+    config = lp.config or {}
+
+    return {
+        "id": lp.id,
+        "code": lp.code,
+        "name": lp.name,
+
+        # Interest
+        "interest_type": config.get("interest", {}).get("type") if config else None,
+        "interest_rate": config.get("interest", {}).get("rate") if config else None,
+
+        # Amount
+        "min_amount": config.get("amount", {}).get("min") if config else None,
+        "max_amount": config.get("amount", {}).get("max") if config else None,
+
+        # Term
+        "min_term": config.get("term", {}).get("min") if config else None,
+        "max_term": config.get("term", {}).get("max") if config else None,
+
+        # Security
+        "secured": config.get("security", {}).get("secured") if config else None,
+        "guarantors_required": config.get("security", {}).get("guarantors_required") if config else None,
+        "requires_collateral": config.get("security", {}).get("requires_collateral") if config else None,
+
+        # Repayment
+        "repayment_frequency": config.get("repayment", {}).get("frequency") if config else None,
+        "repayment_method": config.get("repayment", {}).get("method") if config else None,
+        "grace_period_days": config.get("repayment", {}).get("grace_period_days") if config else None,
+        "late_payment_rate": config.get("repayment", {}).get("late_payment_rate") if config else None,
+        "late_payment_type": config.get("repayment", {}).get("late_payment_type") if config else None,
+        "allow_reschedule": config.get("repayment", {}).get("allow_reschedule") if config else None,
+        "allow_early_repayment": config.get("repayment", {}).get("allow_early_repayment") if config else None,
+        "early_repayment_penalty": config.get("repayment", {}).get("early_repayment_penalty") if config else None,
+
+        # GL
+        "loan_principal_gl": config.get("gl", {}).get("loan_principal") if config else None,
+        "interest_income_gl": config.get("gl", {}).get("interest_income") if config else None,
+        "penalty_income_gl": config.get("gl", {}).get("penalty_income") if config else None,
+        "charges_income_gl": config.get("gl", {}).get("charges_income") if config else None,
+
+        # Arrays
+        "rules": config.get("rules", []) if config else [],
+        "charges": config.get("charges", []) if config else [],
+    }
+    
+    
+def member_financial_summary(member_id):
+
+    # SETTINGS
+    settings = ChamaSettings.query.first()
+    credit_multiplier = settings.credit_multiplier / 100 if settings else 0.95
+    registration_fee = settings.registration_fee if settings else 0
+
+    # ---------------- SAVINGS (DEP only) ----------------
+    dep_total = db.session.query(
+        db.func.coalesce(db.func.sum(Contribution.amount), 0)
+    ).filter(
+        Contribution.memberId == member_id,
+        Contribution.savings_product == "DEP"
+    ).scalar()
+
+    # ---------------- REG ----------------
+    reg_total = db.session.query(
+        db.func.coalesce(db.func.sum(Contribution.amount), 0)
+    ).filter(
+        Contribution.memberId == member_id,
+        Contribution.savings_product == "REG"
+    ).scalar()
+
+    # ---------------- LOANS ----------------
+    loans = Credit.query.filter_by(member_id=member_id).all()
+
+    active_loans = sum(float(l.amount_requested) for l in loans if l.status == "Active")
+    total_loans = sum(float(l.amount_requested) for l in loans)
+
+    # ---------------- CREDIT CALC ----------------
+    qualified_amount = float(dep_total) * credit_multiplier
+    available_credit = qualified_amount - active_loans
+
+    return jsonify({
+        "memberId": member_id,
+
+        "savings": {
+            "DEP": float(dep_total),
+            "REG": float(reg_total)
+        },
+
+        "loans": {
+            "totalLoans": total_loans,
+            "activeLoans": active_loans,
+            "count": len(loans)
+        },
+
+        "credit": {
+            "qualifiedAmount": qualified_amount,
+            "availableCredit": available_credit
+        },
+
+        "registration": {
+            "required": registration_fee,
+            "paid": float(reg_total) >= registration_fee
+        }
+    }), 200
+    
+
+def get_member_contributions(member_id):
+    contributions = Contribution.query.filter_by(memberId=member_id).all()
+
+    return jsonify([
+        {
+            "id": c.id,
+            "memberId": c.memberId,
+            "memberName": c.memberName,
+            "month": c.month,
+            "amount": c.amount,
+            "date": c.date,
+            "savingsProduct": c.savings_product  # IMPORTANT
+        }
+        for c in contributions
+    ]), 200
+    
+
+def get_member_contributions_by_product(member_id, product):
+
+    contributions = Contribution.query.filter_by(
+        memberId=member_id,
+        savings_product=product
+    ).all()
+
+    return jsonify([c.to_dict() for c in contributions]), 200
+
+
+def get_member_loans(member_id):
+
+    loans = Credit.query.filter_by(
+        member_id=member_id
+    ).order_by(Credit.id.desc()).all()
+
+    return jsonify([
+        {
+            "loanId": l.loan_id,
+            "amountRequested": float(l.amount_requested),
+            "status": l.status.value if l.status else None,
+            "interestRate": l.interest_rate,
+            "installments": l.installments,
+            "createdAt": l.created_at.isoformat() if l.created_at else None
+        }
+        for l in loans
+    ]), 200
+    
+
+def get_member_overview(member_id):
+    m = Member.query.get(member_id)
+    return jsonify(m.to_dict())
+
+def member_statement(member_id):
+
+    from_date = request.args.get("from")
+    to_date = request.args.get("to")
+
+    member = Member.query.get(member_id)
+    if not member:
+        return jsonify({"error": "Member not found"}), 404
+
+    # ================= PARSE DATES =================
+    def parse(d):
+        return datetime.strptime(d, "%Y-%m-%d") if d else None
+
+    from_dt = parse(from_date)
+    to_dt = parse(to_date)
+
+    # ================= SAVINGS (EXCLUDE REG ONLY) =================
+    savings_query = Contribution.query.filter(
+        Contribution.memberId == member_id,
+        Contribution.savings_product != "REG"
+    )
+
+    loans_query = Credit.query.filter_by(member_id=member_id)
+
+    # Apply date filter
+    if from_dt:
+        savings_query = savings_query.filter(Contribution.date >= from_date)
+    if to_dt:
+        savings_query = savings_query.filter(Contribution.date <= to_date)
+
+    savings = savings_query.all()
+    loans = loans_query.all()
+
+    # ================= BUILD STATEMENT =================
+    statement = []
+
+    for s in savings:
+        statement.append({
+            "date": s.date,
+            "type": s.savings_product,
+            "description": f"{s.savings_product} Contribution",
+            "debit": 0,
+            "credit": float(s.amount)
+        })
+
+    for l in loans:
+        statement.append({
+            "date": l.created_at.isoformat() if l.created_at else None,
+            "type": "LOAN",
+            "description": f"Loan {l.loan_id}",
+            "debit": float(l.amount_requested),
+            "credit": 0
+        })
+
+    statement.sort(key=lambda x: x["date"] or "")
+
+    # ================= RUNNING BALANCE =================
+    balance = 0
+    for s in statement:
+        balance += s["credit"]
+        balance -= s["debit"]
+        s["balance"] = balance
+
+    opening_balance = 0 if not statement else statement[0]["balance"] - (
+        statement[0]["credit"] - statement[0]["debit"]
+    )
+
+    closing_balance = balance
+
+    return jsonify({
+        "member": {
+            "id": member.member_id,
+            "name": f"{member.first_name or ''} {member.last_name or ''}".strip()
+        },
+        "openingBalance": opening_balance,
+        "closingBalance": closing_balance,
+        "statement": statement
+    }), 200

@@ -7,6 +7,14 @@ const Sidebar = ({ active = "Dashboard" }) => {
   const user = JSON.parse(localStorage.getItem("loggedInUser"));
   const role = user?.role || "guest";
 
+  const [creditOpen, setCreditOpen] = useState(true);
+ const toggleCredit = () => {
+  setCreditOpen((prev) => {
+    localStorage.setItem("creditOpen", !prev);
+    return !prev;
+  });
+};
+
   const [loggingOut, setLoggingOut] = useState(false); // loader state
 
   const canAccess = (allowedRoles) =>
@@ -71,11 +79,11 @@ const Sidebar = ({ active = "Dashboard" }) => {
             </li>
           )}
 
-          {canAccess(["treasurer"]) && (
-            <li className={active === "Credit" ? "active" : ""}>
-              <Link to="/credit">
-                <span className="icon">💳</span>
-                <span className="text">Credit</span>
+         {canAccess(["treasurer"]) && (
+            <li className={active === "Credit Journal" ? "active" : ""}>
+              <Link to="/receipt_journal">
+                <span className="icon">📒</span>
+                <span className="text">Receipt Journal</span>
               </Link>
             </li>
           )}
@@ -87,6 +95,49 @@ const Sidebar = ({ active = "Dashboard" }) => {
               </Link>
             </li>
           )}
+
+          {canAccess(["treasurer"]) && (
+            // <li className="menu-section">
+            <li className={active === "Credit" ? "active" : ""}>
+              <div
+                className="menu-title"
+                onClick={toggleCredit}
+                style={{
+                  cursor: "pointer",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center"
+                }}
+              >
+                <span>💳 Credit Management</span>
+                <span>{creditOpen ? "▾" : "▸"}</span>
+              </div>
+
+              {creditOpen && (
+                <ul className="submenu">
+                  <li>
+                    <Link 
+                    to="/loan-products"> <span className="icon">🏦</span>
+                <span className="text">Loan Products</span></Link>
+                  </li>
+                  <li>
+                    <Link to="/credit">Loan Applications</Link>
+                  </li>
+                  <li>
+                    <Link to="/credit-list">Approvals</Link>
+                  </li>
+                  <li>
+                    <Link to="/loan-disbursements">Disbursements</Link>
+                  </li>
+                  <li>
+                    <Link to="/loan-repayments">Repayments</Link>
+                  </li>
+                </ul>
+              )}
+            </li>
+          )}
+
+  
 
           {canAccess(["treasurer"]) && (
             <li className={active === "COA" ? "active" : ""}>

@@ -40,6 +40,8 @@ const MemberCredit = () => {
   const [guarantorInput, setGuarantorInput] = useState("");
   const [collateralInput, setCollateralInput] = useState("");
   const navigate = useNavigate();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [newGuarantor, setNewGuarantor] = useState({
     name: "",
@@ -74,6 +76,16 @@ const MemberCredit = () => {
       committedAmount: "",
     });
   };
+
+  const filteredMembers = members.filter((m) => {
+    const term = searchTerm.toLowerCase();
+
+    return (
+      String(m.id).toLowerCase().includes(term) ||
+      String(m.memberNumber || "").toLowerCase().includes(term) ||
+      (m.name || "").toLowerCase().includes(term)
+    );
+  });
 
   const removeGuarantor = (index) => {
     setGuarantors(guarantors.filter((_, i) => i !== index));
@@ -116,7 +128,7 @@ const MemberCredit = () => {
 
   const selectedMember = members.find((m) => m.id === selectedMemberId);
 
- 
+
 
   const isRegistered =
     selectedMember?.registrationPaidAmount >= registrationFee;
@@ -125,7 +137,7 @@ const MemberCredit = () => {
     ? selectedMember.totalContribution * CREDIT_MULTIPLIER
     : 0;
 
-    console.log(isRegistered)
+  console.log(isRegistered)
 
   // Automatically fetch member loans when member changes
   useEffect(() => {
@@ -168,53 +180,53 @@ const MemberCredit = () => {
     isRegistered && qualifiedAmount >= MIN_CREDIT_AMOUNT && !hasDefaultedLoan;
 
 
-  
+
   const handleSubmitCredit = async () => {
-  if (isSubmitting) return;
+    if (isSubmitting) return;
 
-  setIsSubmitting(true);
+    setIsSubmitting(true);
 
-  try {
-    const payload = {
-      memberId: selectedMember.id,
-      amountRequested: Number(amountRequested),
-      installments: Number(installments),
-      interestRate: INTEREST_RATE,
-      insuranceFee: insuranceFee,
-    };
+    try {
+      const payload = {
+        memberId: selectedMember.id,
+        amountRequested: Number(amountRequested),
+        installments: Number(installments),
+        interestRate: INTEREST_RATE,
+        insuranceFee: insuranceFee,
+      };
 
-    const res = await fetch("http://127.0.0.1:5000/api/credit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+      const res = await fetch("http://127.0.0.1:5000/api/credit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-    if (!res.ok) throw new Error("Request failed");
+      if (!res.ok) throw new Error("Request failed");
 
-    // Backend returns the created loan
-    const newLoan = await res.json();
+      // Backend returns the created loan
+      const newLoan = await res.json();
 
-    toast.success("Credit request submitted successfully");
+      toast.success("Credit request submitted successfully");
 
-    // Reset modal state
-    setAmountRequested("");
-    setInstallments("");
-    setShowModal(false);
+      // Reset modal state
+      setAmountRequested("");
+      setInstallments("");
+      setShowModal(false);
 
-    // Redirect to Loan Detail page immediately
-    if (newLoan?.loanId) {
-      navigate(`/credit/${newLoan.loanId}`);
-    } else {
-      console.warn("Loan ID not returned. Cannot redirect to loan details.");
+      // Redirect to Loan Detail page immediately
+      if (newLoan?.loanId) {
+        navigate(`/credit/${newLoan.loanId}`);
+      } else {
+        console.warn("Loan ID not returned. Cannot redirect to loan details.");
+      }
+
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to submit credit request");
+    } finally {
+      setIsSubmitting(false);
     }
-
-  } catch (err) {
-    console.error(err);
-    toast.error("Failed to submit credit request");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
   return (
     <div className="dashboard">
       <Sidebar active="Credit" />
@@ -223,22 +235,77 @@ const MemberCredit = () => {
         <h1>Credit</h1>
 
         <div className="member-selector-container">
-          <button className="view-btn" onClick={() => navigate("/credit-list")}>
-            Go to Credit List
-          </button>
+          {false && (
+            <button
+              className="view-btn"
+              onClick={() => navigate("/credit-list")}
+            >
+              Go to Credit List
+            </button>
+          )}
 
-          <select
-            value={selectedMemberId}
-            onChange={(e) => setSelectedMemberId(e.target.value)}
-            // onChange={(e) => setSelectedMemberId(Number(e.target.value))}-
-          >
-            <option value="">Select Member</option>
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
+
+
+          <div className="custom-select">
+
+            <div
+              className="select-box"
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+            >
+              {selectedMember
+                ? `${selectedMember.name} (${selectedMember.id || "No"})`
+                : "Select Member"}
+            </div>
+
+            {dropdownOpen && (
+              <div className="dropdown">
+
+                <input
+                  type="text"
+                  placeholder="Search by ID, Name or Member No..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="dropdown-search"
+                />
+
+                {/* {filteredMembers.map((m) => (
+
+                  <div
+                    key={m.id}
+                    className="dropdown-item"
+
+                    onClick={() => {
+                      setSelectedMemberId(m.id);
+                      setDropdownOpen(false);
+                      setSearchTerm("");
+                    }}
+                  >
+                    {m.name} (Member No: {m.id} | National ID: {m.national_id || "N/A"})
+                  </div>
+                ))} */}
+
+                {filteredMembers.map((m) => {
+                 
+
+                  return (
+                    <div
+                      key={m.id}
+                      className="dropdown-item"
+                      onClick={() => {
+                        setSelectedMemberId(m.id);
+                        setDropdownOpen(false);
+                        setSearchTerm("");
+                      }}
+                    >
+                      {m.name} (Member No: {m.id} | National ID: {m.nationalId || "N/A"})
+                    </div>
+                  );
+                })}
+
+              </div>
+            )}
+          </div>
         </div>
 
         {selectedMember && (
@@ -295,23 +362,23 @@ const MemberCredit = () => {
               </div>
             )}
 
-           {isQualified && (
-  <div className="credit-action">
-  
+            {isQualified && (
+              <div className="credit-action">
 
-   <button
-  className="view-btn"
-  onClick={() => setShowModal(true)}
-  disabled={availableCredit <= 0}
->
-  Request Credit
-</button>
-  </div>
-)}
+
+                <button
+                  className="view-btn"
+                  onClick={() => setShowModal(true)}
+                  disabled={availableCredit <= 0}
+                >
+                  Request Credit
+                </button>
+              </div>
+            )}
           </div>
         )}
       </main>
-     
+
 
       {showModal && (
         <div className="modal-backdrop">
@@ -355,7 +422,7 @@ const MemberCredit = () => {
               </p>
             )}
 
-          
+
 
             <div className="modal-actions" style={{ marginTop: "16px" }}>
               <button

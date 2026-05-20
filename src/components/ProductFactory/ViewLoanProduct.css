@@ -1,0 +1,22 @@
+.page-container {
+    display: flex;
+    min-height: 100vh;
+    background: #f6f8fb;
+}
+
+.content {
+    flex: 1;
+    padding: 20px;
+    margin-left: 10px;
+}
+
+.card {
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.row {
+    margin-bottom: 10px;
+}

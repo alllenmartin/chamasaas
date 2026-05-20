@@ -64,7 +64,7 @@ const MemberDetails = () => {
       case "membership":
         return (
           <div className="tab-content">
-            <p><strong>Membership ID:</strong> {member.id}</p>
+            <p><strong>Membership ID:</strong> {member.memberId}</p>
             <p><strong>Role:</strong> {member.role}</p>
             <p><strong>Registered:</strong> {member.registrationPaid ? "Yes" : "No"}</p>
           </div>

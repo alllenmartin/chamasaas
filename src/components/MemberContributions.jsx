@@ -39,7 +39,7 @@ const MemberContributions = () => {
     ? contributions
     : contributions.filter((c) => c.memberId === selectedMemberId);
 
-  // ✅ PAGINATION CALCULATIONS MUST COME AFTER visibleContributions
+  // PAGINATION CALCULATIONS MUST COME AFTER visibleContributions
   const totalPages = Math.ceil(visibleContributions.length / itemsPerPage);
   const indexOfLast = currentPage * itemsPerPage;
   const indexOfFirst = indexOfLast - itemsPerPage;

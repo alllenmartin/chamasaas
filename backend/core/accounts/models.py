@@ -27,3 +27,5 @@ class OtpAttempt(db.Model):
     success = db.Column(db.Boolean, default=False)
     ip_address = db.Column(db.String(50))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    

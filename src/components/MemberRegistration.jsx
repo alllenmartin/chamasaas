@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import "./MemberRegistration.css";
 
@@ -16,6 +16,8 @@ const MemberRegistration = () => {
   const [step, setStep] = useState(0);
   const [photo, setPhoto] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [memberDbId, setMemberDbId] = useState(null);
+  const [draftSaved, setDraftSaved] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -30,7 +32,8 @@ const MemberRegistration = () => {
     phone: "",
     email: "",
     address: "",
-    memberId: "MBR-" + Math.floor(100000 + Math.random() * 900000),
+    memberId: "",
+    status: "Draft",
     role: "Member",
     bankName: "",
     branchName: "",
@@ -56,6 +59,42 @@ const MemberRegistration = () => {
       guardian: "",
     },
   ]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("memberDraft");
+
+    if (saved) {
+      const parsed = JSON.parse(saved);
+
+      if (parsed.formData) {
+        setFormData(parsed.formData);
+      }
+
+      if (parsed.beneficiaries) {
+        setBeneficiaries(parsed.beneficiaries);
+      }
+
+      if (parsed.memberDbId) {
+        setMemberDbId(parsed.memberDbId);
+      }
+
+      if (parsed.photo) {
+        setPhoto(parsed.photo);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "memberDraft",
+      JSON.stringify({
+        formData,
+        beneficiaries,
+        memberDbId,
+        photo,
+      })
+    );
+  }, [formData, beneficiaries, memberDbId, photo]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -119,12 +158,32 @@ const MemberRegistration = () => {
     }
   };
 
-  const nextStep = () => {
-    if (!validateStep()) {
-      alert("Please complete all required fields in this step before continuing.");
-      return;
+  const validateBeforeSave = () => {
+
+    if (
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.nationalId
+    ) {
+      toast.error("Please complete personal information");
+      return false;
     }
-    if (step < steps.length - 1) setStep(step + 1);
+
+    if (!formData.phone) {
+      toast.error("Please provide phone number");
+      return false;
+    }
+
+    return true;
+  };
+
+  const nextStep = async () => {
+
+    await saveDraft();
+
+    if (step < steps.length - 1) {
+      setStep(step + 1);
+    }
   };
 
   const prevStep = () => {
@@ -139,16 +198,105 @@ const MemberRegistration = () => {
   //   alert("Member saved successfully! Check console for data.");
   // };
 
-  const                                                                                                                                                      saveMember = async () => {
-    const data = { ...formData, beneficiaries };
-    setLoading(true); // show spinner / disable button
+  const saveDraft = async () => {
 
     try {
-      const res = await fetch("http://127.0.0.1:5000/api/newmembers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+
+      const payload = {
+        ...formData,
+        beneficiaries,
+        status: "Draft",
+      };
+
+      let res;
+
+      // CREATE NEW DRAFT
+      if (!memberDbId) {
+
+        res = await fetch("http://127.0.0.1:5000/api/newmembers", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const result = await res.json();
+
+        setMemberDbId(result.id);
+
+        setFormData((prev) => ({
+          ...prev,
+          memberId: result.memberId,
+        }));
+
+      }
+
+      // UPDATE EXISTING DRAFT
+      else {
+
+        res = await fetch(`http://127.0.0.1:5000/api/newmembers/${memberDbId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+      }
+
+      setDraftSaved(true);
+
+      setTimeout(() => {
+        setDraftSaved(false);
+      }, 3000);
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const saveMember = async () => {
+
+    if (!validateBeforeSave()) {
+      return;
+    }
+    setLoading(true);
+    try {
+
+      const payload = {
+        ...formData,
+        beneficiaries,
+        status: "Active",
+      };
+
+      let res;
+
+      // UPDATE EXISTING DRAFT TO ACTIVE
+      if (memberDbId) {
+
+        res = await fetch(`http://127.0.0.1:5000/api/newmembers/${memberDbId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+      }
+
+      // CREATE DIRECT ACTIVE MEMBER
+      else {
+
+        res = await fetch("http://127.0.0.1:5000/api/newmembers", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+      }
 
       if (!res.ok) {
         const errData = await res.json();
@@ -157,9 +305,14 @@ const MemberRegistration = () => {
 
       const result = await res.json();
 
-      toast.success(`Member created successfully! Member ID: ${result.memberId}`);
+      toast.success(`Member saved successfully! Member ID: ${result.memberId}`);
 
-      // Reset form
+      // CLEAR LOCAL STORAGE
+      localStorage.removeItem("memberDraft");
+
+      // RESET STATES
+      setMemberDbId(null);
+
       setFormData({
         firstName: "",
         secondName: "",
@@ -173,8 +326,9 @@ const MemberRegistration = () => {
         phone: "",
         email: "",
         address: "",
-        memberId: "", // will be generated by backend
+        memberId: "",
         role: "Member",
+        status: "Draft",
         bankName: "",
         branchName: "",
         accountNumber: "",
@@ -189,8 +343,18 @@ const MemberRegistration = () => {
       });
 
       setBeneficiaries([
-        { name: "", phone: "", relation: "", share: 0, idNumber: "", address: "", guardian: "" },
+        {
+          name: "",
+          phone: "",
+          relation: "",
+          share: 0,
+          idNumber: "",
+          address: "",
+          guardian: "",
+        },
       ]);
+
+      setPhoto(null);
 
       setStep(0);
 
@@ -198,7 +362,7 @@ const MemberRegistration = () => {
       console.error(err);
       toast.error(err.message);
     } finally {
-      setLoading(false); // hide spinner / enable button
+      setLoading(false);
     }
   };
   return (
@@ -231,6 +395,12 @@ const MemberRegistration = () => {
           <div className="registration-form">
             <h3>{steps[step]}</h3>
 
+            {draftSaved && (
+              <p className="draft-status">
+                Draft Saved
+              </p>
+            )}
+
             {/* STEP 0: PERSONAL INFO */}
             {step === 0 && (
               <div className="form-grid">
@@ -244,28 +414,97 @@ const MemberRegistration = () => {
                     <input type="file" hidden onChange={handlePhoto} />
                   </label>
                 </div>
-                <input name="firstName" placeholder="First Name" onChange={handleChange} />
-                <input name="secondName" placeholder="Second Name" onChange={handleChange} />
-                <input name="lastName" placeholder="Last Name" onChange={handleChange} />
-                <input name="nationalId" placeholder="National ID" onChange={handleChange} />
-                <select name="gender" onChange={handleChange}>
+                <input
+                  name="firstName"
+                  placeholder="First Name"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                />
+
+                <input
+                  name="secondName"
+                  placeholder="Second Name"
+                  value={formData.secondName}
+                  onChange={handleChange}
+                />
+
+                <input
+                  name="lastName"
+                  placeholder="Last Name"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                />
+
+                <input
+                  name="nationalId"
+                  placeholder="National ID"
+                  value={formData.nationalId}
+                  onChange={handleChange}
+                />
+
+                <select
+                  name="gender"
+                  value={formData.gender}
+                  onChange={handleChange}
+                >
                   <option value="">Gender</option>
                   <option>Male</option>
                   <option>Female</option>
                 </select>
-                <input type="date" name="dob" onChange={handleChange} />
+
+                <input
+                  type="date"
+                  name="dob"
+                  value={formData.dob}
+                  onChange={handleChange}
+                />
               </div>
             )}
 
             {/* STEP 1: CONTACT */}
             {step === 1 && (
               <div className="form-grid">
-                <input name="nationality" placeholder="Nationality" onChange={handleChange} />
-                <input name="county" placeholder="County" onChange={handleChange} />
-                <input name="subCounty" placeholder="Sub County" onChange={handleChange} />
-                <input name="phone" placeholder="Phone" onChange={handleChange} />
-                <input name="email" placeholder="Email" onChange={handleChange} />
-                <input name="address" placeholder="Address" onChange={handleChange} />
+                <input
+                  name="nationality"
+                  placeholder="Nationality"
+                  value={formData.nationality}
+                  onChange={handleChange}
+                />
+
+                <input
+                  name="county"
+                  placeholder="County"
+                  value={formData.county}
+                  onChange={handleChange}
+                />
+
+                <input
+                  name="subCounty"
+                  placeholder="Sub County"
+                  value={formData.subCounty}
+                  onChange={handleChange}
+                />
+
+                <input
+                  name="phone"
+                  placeholder="Phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                />
+
+                <input
+                  name="email"
+                  placeholder="Email"
+                  value={formData.email}
+                  onChange={handleChange}
+                />
+
+                <input
+                  name="address"
+                  placeholder="Address"
+                  value={formData.address}
+                  onChange={handleChange}
+                />
               </div>
             )}
 
@@ -273,7 +512,11 @@ const MemberRegistration = () => {
             {step === 2 && (
               <div className="form-grid">
                 <input value={formData.memberId} readOnly />
-                <select name="role" onChange={handleChange}>
+                <select
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                >
                   <option>Member</option>
                   <option>Chairperson</option>
                   <option>Treasurer</option>
@@ -284,9 +527,26 @@ const MemberRegistration = () => {
             {/* STEP 3: FINANCIAL */}
             {step === 3 && (
               <div className="form-grid">
-                <input name="bankName" placeholder="Bank Name" onChange={handleChange} />
-                <input name="branchName" placeholder="Branch Name" onChange={handleChange} />
-                <input name="accountNumber" placeholder="Account Number" onChange={handleChange} />
+                <input
+                  name="bankName"
+                  placeholder="Bank Name"
+                  value={formData.bankName}
+                  onChange={handleChange}
+                />
+
+                <input
+                  name="branchName"
+                  placeholder="Branch Name"
+                  value={formData.branchName}
+                  onChange={handleChange}
+                />
+
+                <input
+                  name="accountNumber"
+                  placeholder="Account Number"
+                  value={formData.accountNumber}
+                  onChange={handleChange}
+                />
               </div>
             )}
 

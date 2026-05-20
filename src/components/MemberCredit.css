@@ -298,6 +298,48 @@
   background: #1e40af;
 }
 
+.custom-select {
+  position: relative;
+  width: 100%;
+}
+
+.select-box {
+  padding: 10px;
+  border: 1px solid #ccc;
+  background: white;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.dropdown {
+  position: absolute;
+  width: 100%;
+  background: white;
+  border: 1px solid #ddd;
+  z-index: 1000;
+  max-height: 250px;
+  overflow-y: auto;
+  border-radius: 6px;
+  margin-top: 4px;
+}
+
+.dropdown-search {
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-bottom: 1px solid #eee;
+  outline: none;
+}
+
+.dropdown-item {
+  padding: 10px;
+  cursor: pointer;
+}
+
+.dropdown-item:hover {
+  background: #f1f1f1;
+}
+
 
 /* =========================
    MOBILE
